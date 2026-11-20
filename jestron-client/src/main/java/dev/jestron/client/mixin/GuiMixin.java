@@ -30,4 +30,13 @@ public abstract class GuiMixin {
         } catch (Throwable ignored) {
         }
     }
+
+    /** Ekran ortasındaki büyük yazı (minigame kazananı vb.) otomatik GG'ye iletilir. */
+    @Inject(method = "setTitle", at = @At("HEAD"))
+    private void jestron$title(net.minecraft.network.chat.Component title, CallbackInfo ci) {
+        try {
+            dev.jestron.client.core.Modules.AUTO_GG.onTitle(title);
+        } catch (Throwable ignored) {
+        }
+    }
 }

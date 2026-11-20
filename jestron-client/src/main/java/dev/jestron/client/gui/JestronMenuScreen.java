@@ -48,6 +48,7 @@ public final class JestronMenuScreen extends Screen {
     private Module settingsOf;
     private final Map<Setting.Text, EditBox> textBoxes = new LinkedHashMap<>();
     private Setting.Num dragging;
+    private Setting.Bind capturing; // "tuşa bas" bekleyen tuş ataması
     private int dragX, dragW;
 
     private final Map<String, Float> anim = new HashMap<>();
@@ -166,6 +167,7 @@ public final class JestronMenuScreen extends Screen {
 
     private void openSettingsInternal(Module m) {
         settingsOf = m;
+        capturing = null;
         setScroll = 0;
         dragging = null;
         if (search != null && !split()) search.setVisible(false);
@@ -179,6 +181,7 @@ public final class JestronMenuScreen extends Screen {
     }
 
     private void closeSettings() {
+        capturing = null;
         for (EditBox b : textBoxes.values()) removeWidget(b);
         textBoxes.clear();
         settingsOf = null;
@@ -688,7 +691,7 @@ public final class JestronMenuScreen extends Screen {
                 y += SET_ROW_H;
             }
             if (m == Modules.MACROS) {
-                text(g, Draw.ellipsize(font, "Tuşlar: Seçenekler › Kontroller › Tuş Atamaları › Jestron Client", w), x0 + 2, y + 6, st.muted());
+                text(g, Draw.ellipsize(font, "Tuşa tıkla, sonra istediğin tuşa bas · Esc: tuşu kaldır", w), x0 + 2, y + 6, st.muted());
             }
         } finally {
             g.disableScissor();
@@ -748,6 +751,23 @@ public final class JestronMenuScreen extends Screen {
                 if (st.radius() == 0 || st.bevel()) g.fill(sx, sy, sx + sw, sy + sw, col);
                 else Draw.roundRect(g, sx, sy, sx + sw, sy + sw, 5, col);
             }
+        } else if (s instanceof Setting.Bind b) {
+            boolean cap = capturing == b;
+            String conflict = cap ? null : b.conflict();
+            String v = cap ? "Bir tuşa bas…" : Draw.ellipsize(font, b.display(), Math.max(20, w / 2 - 40));
+            ctrlW = Math.max(64, font.width(v) + 16);
+            ctrlX = x0 + w - ctrlW;
+            boolean hv = inArea && Draw.inside(mx, my, ctrlX, y + 3, ctrlW, h - 6);
+            int fill = cap ? st.accent() : hv ? st.cardHover() : st.card();
+            box(g, ctrlX, y + 3, ctrlX + ctrlW, y + h - 3, fill, cap ? st.accent() : conflict != null ? 0xFFEF4444 : st.border(), true);
+            int vc = cap ? (MenuStyle.luminance(st.accent()) > 0.6 ? 0xFF18181B : 0xFFFFFFFF) : !b.bound() ? st.cardMuted() : conflict != null ? 0xFFEF4444 : st.cardText();
+            g.drawString(font, v, ctrlX + (ctrlW - font.width(v)) / 2, ty, vc, st.bevel());
+            if (conflict != null && hv) {
+                String t = "Çakışıyor: " + conflict;
+                int tw = font.width(t) + 8, tx = Math.max(x0, ctrlX + ctrlW - tw);
+                g.fill(tx, y - 11, tx + tw, y + 1, 0xEE18181B);
+                g.drawString(font, t, tx + 4, y - 9, 0xFFFCA5A5, false);
+            }
         } else if (s instanceof Setting.Choice c) {
             String v = Draw.ellipsize(font, c.display(), Math.max(20, w / 2 - 30));
             ctrlW = Math.max(60, font.width(v) + 26);
@@ -804,6 +824,15 @@ public final class JestronMenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double myRaw, int button) {
+        if (capturing != null) {
+            Setting.Bind b = capturing;
+            capturing = null;
+            if (button >= 2) { // orta tuş ve yan tuşlar atanabilir
+                b.bindKey(com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(button));
+                dirty = true;
+                return true;
+            }
+        }
         double my = slideY(myRaw);
         for (EditBox b : textBoxes.values()) {
             if (b.visible && Draw.inside(mx, my, b.getX() - 6, b.getY() - 3, b.getWidth() + 12, 14)) {
@@ -879,6 +908,11 @@ public final class JestronMenuScreen extends Screen {
                         break;
                     }
                 }
+            } else if (r.s instanceof Setting.Bind b) {
+                if (mx >= r.ctrlX) {
+                    capturing = capturing == b ? null : b;
+                    setFocused(null);
+                }
             } else if (r.s instanceof Setting.Choice c) {
                 if (mx >= r.ctrlX) {
                     c.next(mx < r.ctrlX + r.ctrlW / 2.0 || button == 1 ? -1 : 1);
@@ -949,6 +983,17 @@ public final class JestronMenuScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        if (capturing != null) {
+            Setting.Bind b = capturing;
+            capturing = null;
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                if (b.allowUnbind) b.unbind(); // Esc: tuşu kaldır (menü tuşu kaldırılamaz)
+            } else {
+                b.bindKey(com.mojang.blaze3d.platform.InputConstants.getKey(key, scan));
+            }
+            dirty = true;
+            return true;
+        }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (getFocused() instanceof EditBox) {
                 setFocused(null);

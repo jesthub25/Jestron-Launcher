@@ -139,6 +139,28 @@ public final class SelfTest {
                 JestronClient.LOG.info("[SELFTEST] nişangahta canlı var: {}", target);
                 shot(mc, "3-oyun-ici-hud");
                 mc.gui.getChat().addMessage(Component.literal("Jestron Client test mesajı (sohbet saati)"));
+                // tuş atama ve otomatik GG tetikleyicileri
+                String meName = mc.player.getGameProfile().getName();
+                net.minecraft.network.chat.Component killMsg = net.minecraft.network.chat.Component.translatable("death.attack.player", net.minecraft.network.chat.Component.literal("Hedef"), mc.player.getName());
+                net.minecraft.network.chat.Component deathMsg = net.minecraft.network.chat.Component.translatable("death.attack.player", mc.player.getName(), net.minecraft.network.chat.Component.literal("Hedef"));
+                if (dev.jestron.client.modules.AutoGgModule.classifyDeath(killMsg, meName) != 1 || dev.jestron.client.modules.AutoGgModule.classifyDeath(deathMsg, meName) != 2) {
+                    finish(mc, "FAIL: öldürme mesajı tanınmadı");
+                    return;
+                }
+                if (!dev.jestron.client.modules.AutoGgModule.killedBy("Hedef was slain by " + meName, meName)
+                        || !dev.jestron.client.modules.AutoGgModule.killedBy("Hedef, " + meName + " tarafından öldürüldü", meName)
+                        || !dev.jestron.client.modules.AutoGgModule.killedBy(meName + " killed Hedef", meName)
+                        || dev.jestron.client.modules.AutoGgModule.killedBy(meName + " was slain by Hedef", meName)
+                        || dev.jestron.client.modules.AutoGgModule.killedBy(meName + ", Hedef tarafından öldürüldü", meName)) {
+                    finish(mc, "FAIL: sunucu öldürme mesajları yanlış");
+                    return;
+                }
+                Modules.MACROS.keys[0].bindKey(com.mojang.blaze3d.platform.InputConstants.getKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F6, 0));
+                if (JestronClient.MACRO_KEYS[0].getKey().getValue() != org.lwjgl.glfw.GLFW.GLFW_KEY_F6 || !Modules.MACROS.keys[0].bound()) {
+                    finish(mc, "FAIL: makro tuşu atanamadı");
+                    return;
+                }
+                JestronClient.LOG.info("[SELFTEST] Makro 1 tuşu: {}", Modules.MACROS.keys[0].display());
                 boolean fired = Modules.AUTO_GG.check("Tebrikler, oyunu KAZANDIN!");
                 JestronClient.LOG.info("[SELFTEST] Otomatik GG tetiklendi: {}", fired);
                 wait = 80;
@@ -158,6 +180,17 @@ public final class SelfTest {
             }
             case 9 -> {
                 shot(mc, "6-ayarlar");
+                if (mc.screen instanceof JestronMenuScreen ms) ms.openSettings(Modules.MACROS);
+                wait = 15;
+                step = 40;
+            }
+            case 40 -> {
+                shot(mc, "7-makro-ayar");
+                Modules.MACROS.keys[0].unbind();
+                if (!JestronClient.MACRO_KEYS[0].isUnbound()) {
+                    finish(mc, "FAIL: makro tuşu kaldırılamadı");
+                    return;
+                }
                 styleShot = 0;
                 step = 20;
             }

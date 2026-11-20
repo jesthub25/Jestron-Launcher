@@ -70,7 +70,7 @@ public final class JestronClient implements ClientModInitializer {
             Modules.JOIN_MESSAGE.onLeave();
         });
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) Modules.AUTO_GG.onGameMessage(message.getString());
+            if (!overlay) Modules.AUTO_GG.onGameMessage(message);
         });
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) ->
                 Modules.AUTO_GG.onPlayerMessage(message.getString()));

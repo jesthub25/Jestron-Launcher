@@ -1,6 +1,13 @@
 package dev.jestron.client.core;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.language.I18n;
+
+import java.util.function.Supplier;
 import com.google.gson.JsonPrimitive;
 
 /** Bir modül ayarı. Değerler JSON'a yazılır, okunurken sınırlarla doğrulanır. */
@@ -207,6 +214,88 @@ public abstract class Setting<T> {
             } catch (RuntimeException ex) {
                 value = def;
             }
+        }
+    }
+
+    /**
+     * Tuş ataması. Değer Minecraft'ın kendi tuş atamasında (options.txt) tutulur; böylece Kontroller menüsüyle
+     * ve çakışma kontrolüyle aynı kalır. Menüde "tuşa bas" ile atanır.
+     */
+    public static final class Bind extends Setting<Integer> {
+        private final Supplier<KeyMapping> mapping;
+        public final boolean allowUnbind;
+
+        public Bind(String key, String label, Supplier<KeyMapping> mapping, boolean allowUnbind) {
+            super(key, label, -1);
+            this.mapping = mapping;
+            this.allowUnbind = allowUnbind;
+        }
+
+        public KeyMapping mapping() {
+            return mapping.get();
+        }
+
+        public boolean bound() {
+            KeyMapping k = mapping();
+            return k != null && !k.isUnbound();
+        }
+
+        public String display() {
+            KeyMapping k = mapping();
+            if (k == null) return "—";
+            return k.isUnbound() ? "Atanmadı" : k.getTranslatedKeyMessage().getString();
+        }
+
+        public void bindKey(InputConstants.Key key) {
+            KeyMapping k = mapping();
+            if (k == null || key == null) return;
+            k.setKey(key);
+            KeyMapping.resetMapping();
+            try {
+                Minecraft.getInstance().options.save();
+            } catch (Throwable ignored) {
+            }
+        }
+
+        public void unbind() {
+            bindKey(InputConstants.UNKNOWN);
+        }
+
+        /** Aynı tuşu kullanan başka bir atama varsa adı. */
+        public String conflict() {
+            KeyMapping k = mapping();
+            if (k == null || k.isUnbound()) return null;
+            for (KeyMapping o : Minecraft.getInstance().options.keyMappings) {
+                if (o != k && o.same(k)) return I18n.get(o.getName());
+            }
+            return null;
+        }
+
+        @Override
+        public Integer get() {
+            KeyMapping k = mapping();
+            return k == null || k.isUnbound() ? -1 : k.getKey().getValue();
+        }
+
+        @Override
+        public void set(Integer v) {
+            if (v == null || v < 0) unbind();
+            else bindKey(InputConstants.Type.KEYSYM.getOrCreate(v));
+        }
+
+        @Override
+        public void reset() {
+            KeyMapping k = mapping();
+            if (k != null) bindKey(k.getDefaultKey());
+        }
+
+        @Override
+        public JsonElement toJson() {
+            return JsonNull.INSTANCE; // options.txt'de saklanır
+        }
+
+        @Override
+        public void fromJson(JsonElement e) {
         }
     }
 }
