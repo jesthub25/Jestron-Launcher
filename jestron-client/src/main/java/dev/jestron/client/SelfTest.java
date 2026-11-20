@@ -156,7 +156,7 @@ public final class SelfTest {
                     return;
                 }
                 Modules.MACROS.keys[0].bindKey(com.mojang.blaze3d.platform.InputConstants.getKey(org.lwjgl.glfw.GLFW.GLFW_KEY_F6, 0));
-                if (JestronClient.MACRO_KEYS[0].getKey().getValue() != org.lwjgl.glfw.GLFW.GLFW_KEY_F6 || !Modules.MACROS.keys[0].bound()) {
+                if (net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(JestronClient.MACRO_KEYS[0]).getValue() != org.lwjgl.glfw.GLFW.GLFW_KEY_F6 || !Modules.MACROS.keys[0].bound()) {
                     finish(mc, "FAIL: makro tuşu atanamadı");
                     return;
                 }

@@ -274,7 +274,7 @@ public abstract class Setting<T> {
         @Override
         public Integer get() {
             KeyMapping k = mapping();
-            return k == null || k.isUnbound() ? -1 : k.getKey().getValue();
+            return k == null || k.isUnbound() ? -1 : net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(k).getValue();
         }
 
         @Override
