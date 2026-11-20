@@ -11,6 +11,11 @@ function errText(e) {
   return 'Giriş başarısız: ' + s;
 }
 
+function isNetError(e) {
+  const s = String((e && (e.code || (e.cause && e.cause.code) || e.message || e.ts)) || e);
+  return /ENOTFOUND|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|fetch failed|network|socket hang up|timeout/i.test(s);
+}
+
 // Sunucuların offline-mode'da kullandığı UUID ile aynı: v3 MD5("OfflinePlayer:" + isim)
 function offlineUuid(name) {
   const h = crypto.createHash('md5').update('OfflinePlayer:' + name, 'utf8').digest();
@@ -89,6 +94,8 @@ async function getLaunchAuth() {
       mclcAuth.user_properties = '{}'; // eski sürümlerde (<=1.12) argüman kaymasını önler
       return { auth: mclcAuth, name: acc.name, uuid: acc.uuid, type: 'microsoft' };
     } catch (e) {
+      // İnternet / Microsoft sunucusu sorunu: hesabı silmek gerekmez, tekrar denemek yeter
+      if (isNetError(e)) throw new Error('Microsoft sunucularına ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.');
       throw new Error(errText(e) + ' Hesabı silip tekrar ekle.');
     }
   }

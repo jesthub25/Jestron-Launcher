@@ -12,11 +12,31 @@ const ACCENTS = [
   { name: 'Pembe', light: '#db2777', dark: '#ec4899' }
 ];
 
+const PROFILE_COLORS = ['#27272a', '#ea580c', '#2563eb', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#ca8a04'];
+
 const S = {
   info: null, settings: null, accounts: { list: [], selected: null, canOffline: false },
   versions: [], modCat: 'Tümü', searchType: 'mod', lastHits: [], running: false, launching: false,
-  pingCache: new Map(), efekt: null, update: null
+  pingCache: new Map(), efekt: null, update: null, editId: null, searchSeq: 0
 };
+
+// ---------- profiller: yardımcılar ----------
+const profById = id => (S.settings.profiles || []).find(p => p.id === id) || null;
+const P = () => profById(S.settings.profileId) || S.settings.profiles[0];   // seçili (oynanacak) profil
+const EP = () => profById(S.editId) || P();                                  // düzenlenen profil
+const pColor = p => PROFILE_COLORS[(p && p.color) || 0] || PROFILE_COLORS[0];
+const ramText = mb => (mb / 1024).toFixed(1).replace('.0', '') + ' GB';
+async function saveProfile(patch, id = P().id) {
+  try { S.settings = await call(window.api.prof.update(id, patch)); afterSettings(); return true; } catch { return false; }
+}
+const saveProfileDeb = (() => {
+  const timers = new Map(), patches = new Map();
+  return (patch, id) => {
+    patches.set(id, { ...(patches.get(id) || {}), ...patch });
+    clearTimeout(timers.get(id));
+    timers.set(id, setTimeout(() => { const p = patches.get(id); patches.delete(id); timers.delete(id); saveProfile(p, id); }, 400));
+  };
+})();
 const PING_TTL = 30000;
 
 // ---------- yardımcılar ----------
@@ -79,13 +99,18 @@ function applyTheme() {
 // ---------- gezinme ----------
 function go(page) {
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
-  $$('#sidebar .nav').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  const nav = page === 'profile' ? 'profiles' : page;
+  $$('#sidebar .nav').forEach(n => n.classList.toggle('active', n.dataset.page === nav));
+  closeProfMenu();
+  if (page === 'profiles') renderProfiles();
   if (page === 'servers') renderServers(true);
   if (page === 'gallery') loadShots();
   if (page === 'mods') renderPacks();
   if (page === 'console') { const l = $('#log'); l.scrollTop = l.scrollHeight; }
 }
 document.addEventListener('click', e => {
+  const ep = e.target.closest('[data-editprof]');
+  if (ep) { e.preventDefault(); openEditor(P().id); return; }
   const el = e.target.closest('[data-page]');
   if (el) { e.preventDefault(); go(el.dataset.page); return; }
   const op = e.target.closest('[data-open]');
@@ -98,8 +123,11 @@ const selectedAcc = () => S.accounts.list.find(a => a.id === S.accounts.selected
 function setAvatar(box, acc) {
   const img = box.querySelector('img');
   box.querySelector('.initial').textContent = acc ? acc.name[0].toUpperCase() : '?';
-  if (!acc) { img.removeAttribute('src'); return; }
-  img.onerror = () => img.removeAttribute('src');
+  if (!acc) { img.classList.remove('ok'); img.removeAttribute('src'); return; }
+  // Resim yüklenene kadar baş harf görünür; internet yoksa bozuk resim simgesi çıkmaz
+  img.classList.remove('ok');
+  img.onload = () => img.classList.add('ok');
+  img.onerror = () => { img.classList.remove('ok'); img.removeAttribute('src'); };
   img.src = acc.type === 'microsoft' ? `https://mc-heads.net/avatar/${encodeURIComponent(acc.uuid)}/64` : 'https://mc-heads.net/avatar/MHF_Steve/64';
 }
 function renderAccounts() {
@@ -151,77 +179,150 @@ async function save(patch) {
 const saveDeb = debounce(save);
 function afterSettings() {
   applyTheme();
-  const s = S.settings;
-  $$('#set-loader button').forEach(b => b.classList.toggle('active', b.dataset.v === s.loader));
-  $$('#set-preset button').forEach(b => b.classList.toggle('active', b.dataset.v === s.preset));
+  const s = S.settings, p = P(), e = EP();
+  $$('#set-loader button').forEach(b => b.classList.toggle('active', b.dataset.v === e.loader));
+  $$('#set-preset button').forEach(b => b.classList.toggle('active', b.dataset.v === e.preset));
+  $$('#pf-color button').forEach((b, i) => b.classList.toggle('active', i === e.color));
   $$('#set-accent button').forEach((b, i) => b.classList.toggle('active', i === s.accent));
-  $('#mods-vanilla-warn').classList.toggle('hidden', s.loader === 'fabric');
-  $('#mods-sub').textContent = `Fabric modları · ${s.version} — oyun başlarken otomatik kurulur.`;
+  $('#mods-vanilla-warn').classList.toggle('hidden', p.loader === 'fabric');
+  $('#mods-sub').textContent = `Profil: ${p.name} · ${p.version} — modlar oyun başlarken otomatik kurulur.`;
+  renderEditorInfo();
   renderHome();
+  if ($('#page-profiles').classList.contains('active')) renderProfiles();
 }
 function ramFill() {
   const r = $('#set-ram');
   r.style.setProperty('--fill', ((r.value - r.min) / Math.max(1, r.max - r.min) * 100) + '%');
   $('#ram-val').textContent = (r.value / 1024).toFixed(1).replace('.0', '') + ' GB';
 }
+/** Genel (profilden bağımsız) ayarları forma yazar. */
 function bindSettings() {
   const s = S.settings;
   $('#set-dark').checked = !!s.dark;
   $('#set-accent').innerHTML = ACCENTS.map((a, i) => `<button type="button" data-i="${i}" title="${esc(a.name)}" aria-label="${esc(a.name)}" style="background:${a.light}"></button>`).join('');
+  $('#pf-color').innerHTML = PROFILE_COLORS.map((c, i) => `<button type="button" data-i="${i}" aria-label="Renk ${i + 1}" style="background:${c}"></button>`).join('');
   $('#set-snap').checked = !!s.showSnapshots;
   const r = $('#set-ram');
   r.max = Math.max(2048, Math.floor(S.info.maxRamMb / 512) * 512);
-  r.value = Math.min(r.max, s.ramMb);
-  ramFill();
   $('#ram-hint').textContent = `Bilgisayar: ${(S.info.totalRamMb / 1024).toFixed(1)} GB · Önerilen: 4–6 GB`;
-  $('#set-jvm').value = s.jvmArgs;
-  $('#set-w').value = s.width; $('#set-h').value = s.height;
-  $('#set-fs').checked = !!s.fullscreen;
   $('#set-onlaunch').value = s.onLaunch;
   $('#set-upd').checked = !!s.checkUpdates;
   $('#set-java').value = s.javaPath;
   $('#set-dir').value = s.gameDir;
   $('#srv-sync').checked = !!s.syncServers;
   $('#about').textContent = `${S.info.name} v${S.info.version} · github.com/${S.info.repo}`;
+  bindProfileEditor();
+}
+
+/** Düzenlenen profilin değerlerini forma yazar (sayfa açılınca ve ön ayardan sonra). */
+function bindProfileEditor() {
+  const p = EP();
+  $('#pf-name').value = p.name;
+  const r = $('#set-ram');
+  r.value = Math.min(Number(r.max), p.ramMb);
+  ramFill();
+  $('#set-jvm').value = p.jvmArgs;
+  $('#set-w').value = p.width; $('#set-h').value = p.height;
+  $('#set-fs').checked = !!p.fullscreen;
+  $('#pf-java').value = p.javaPath || '';
+  const srv = S.settings.servers || [];
+  const cur = p.server ? `${p.server.host}:${p.server.port}` : '';
+  const opts = [`<option value="">Kapalı (ana menü)</option>`, ...srv.map(x => `<option value="${esc(x.host + ':' + x.port)}">${esc(x.name)} — ${esc(x.host)}${x.port !== 25565 ? ':' + x.port : ''}</option>`)];
+  if (cur && !srv.some(x => `${x.host}:${x.port}` === cur)) opts.push(`<option value="${esc(cur)}">${esc(cur)}</option>`);
+  $('#pf-server').innerHTML = opts.join('');
+  $('#pf-server').value = cur;
+  setVersionSelect();
   afterSettings();
+}
+function renderEditorInfo() {
+  const p = EP();
+  if (!p) return;
+  const mc = activeModCount(p);
+  $('#pf-title').textContent = p.name;
+  $('#pf-sub').textContent = `${p.version} · ${p.loader === 'fabric' ? 'Fabric' : 'Vanilla'}${p.id === S.settings.profileId ? ' · Seçili profil' : ''}`;
+  $('#pf-mods').textContent = p.loader === 'fabric' ? `${mc.n} mod aktif${mc.names.length ? ': ' + mc.names.slice(0, 4).join(', ') + (mc.names.length > 4 ? '…' : '') : ''}` : 'Vanilla: mod yok';
+  $('#pf-dir').textContent = 'instances/' + p.dir;
+  $('#pf-stats').textContent = `Oyun süresi ${fmtDuration(p.playtimeMs)} · ${p.lastPlayedAt ? 'Son oynama ' + new Date(p.lastPlayedAt).toLocaleDateString('tr-TR') : 'Hiç oynanmadı'}`;
+  $('#pf-del').disabled = S.settings.profiles.length <= 1;
+}
+function openEditor(id) {
+  S.editId = id;
+  bindProfileEditor();
+  go('profile');
 }
 async function loadVersions() {
   try { S.versions = (await call(window.api.versions(S.settings.showSnapshots), true)).versions; }
-  catch { S.versions = [{ id: S.settings.version, fabric: true }]; toast('Sürüm listesi alınamadı (internet?)', 'err'); }
+  catch { S.versions = []; toast('Sürüm listesi alınamadı (internet?)', 'err'); }
+  setVersionSelect();
+}
+function setVersionSelect() {
   const sel = $('#set-version');
-  sel.innerHTML = S.versions.map(v => `<option value="${esc(v.id)}">${esc(v.id)}${v.id === S.info.jestronMc ? '  ★ Jestron' : ''}${v.type === 'snapshot' ? ' (snapshot)' : ''}${v.fabric ? '' : ' — Fabric yok'}</option>`).join('');
-  if (!S.versions.some(v => v.id === S.settings.version)) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(S.settings.version)}">${esc(S.settings.version)}</option>`);
-  sel.value = S.settings.version;
+  const cur = EP().version;
+  const list = S.versions.length ? S.versions : [{ id: cur, fabric: true }];
+  sel.innerHTML = list.map(v => `<option value="${esc(v.id)}">${esc(v.id)}${v.id === S.info.jestronMc ? '  ★ Jestron' : ''}${v.type === 'snapshot' ? ' (snapshot)' : ''}${v.fabric ? '' : ' — Fabric yok'}</option>`).join('');
+  if (!list.some(v => v.id === cur)) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(cur)}">${esc(cur)}</option>`);
+  sel.value = cur;
 }
 $('#set-dark').addEventListener('change', e => save({ dark: e.target.checked }));
 $('#set-accent').addEventListener('click', e => { const b = e.target.closest('button'); if (b) save({ accent: Number(b.dataset.i) }); });
+// ---- profil düzenleyici
 $('#set-version').addEventListener('change', e => {
+  const p = EP();
   const v = S.versions.find(x => x.id === e.target.value);
   const patch = { version: e.target.value };
-  if (v && !v.fabric && S.settings.loader === 'fabric') { patch.loader = 'vanilla'; toast(`Fabric ${v.id} desteklemiyor, Vanilla'ya geçildi.`); }
-  if (e.target.value !== S.info.jestronMc && (S.settings.jestronClient || S.settings.efektMenu)) toast(`Jestron Client ve Efekt Menüsü sadece ${S.info.jestronMc}'te çalışır.`);
-  save(patch);
+  if (v && !v.fabric && p.loader === 'fabric') { patch.loader = 'vanilla'; toast(`Fabric ${v.id} desteklemiyor, Vanilla'ya geçildi.`); }
+  if (e.target.value !== S.info.jestronMc && (p.jestronClient || p.efektMenu)) toast(`Jestron Client ve Efekt Menüsü sadece ${S.info.jestronMc}'te çalışır.`);
+  saveProfile(patch, p.id);
 });
 $('#set-snap').addEventListener('change', async e => { await save({ showSnapshots: e.target.checked }); loadVersions(); });
 $('#set-loader').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  const v = S.versions.find(x => x.id === S.settings.version);
+  const p = EP();
+  const v = S.versions.find(x => x.id === p.version);
   if (b.dataset.v === 'fabric' && v && !v.fabric) return toast(`Fabric ${v.id} sürümünü desteklemiyor.`, 'err');
-  save({ loader: b.dataset.v });
+  saveProfile({ loader: b.dataset.v }, p.id);
 });
 $('#set-preset').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
-  try { S.settings = await call(window.api.settings.preset(b.dataset.v)); bindSettings(); renderMods(); toast('Ön ayar uygulandı: ' + b.textContent, 'ok'); } catch {}
+  try { S.settings = await call(window.api.prof.preset(EP().id, b.dataset.v)); bindProfileEditor(); renderMods(); toast('Ön ayar uygulandı: ' + b.textContent, 'ok'); } catch {}
 });
-$('#set-ram').addEventListener('input', () => { ramFill(); saveDeb({ ramMb: Number($('#set-ram').value), preset: 'custom' }); });
-$('#set-jvm').addEventListener('input', e => saveDeb({ jvmArgs: e.target.value, preset: 'custom' }));
-$('#set-w').addEventListener('change', e => save({ width: Number(e.target.value) || 1280 }));
-$('#set-h').addEventListener('change', e => save({ height: Number(e.target.value) || 720 }));
-$('#set-fs').addEventListener('change', e => save({ fullscreen: e.target.checked }));
+$('#set-ram').addEventListener('input', () => { ramFill(); saveProfileDeb({ ramMb: Number($('#set-ram').value), preset: 'custom' }, EP().id); });
+$('#set-jvm').addEventListener('input', e => saveProfileDeb({ jvmArgs: e.target.value, preset: 'custom' }, EP().id));
+$('#set-w').addEventListener('change', e => saveProfile({ width: Number(e.target.value) || 1280 }, EP().id));
+$('#set-h').addEventListener('change', e => saveProfile({ height: Number(e.target.value) || 720 }, EP().id));
+$('#set-fs').addEventListener('change', e => saveProfile({ fullscreen: e.target.checked }, EP().id));
+$('#pf-name').addEventListener('change', async e => {
+  const v = e.target.value.trim();
+  if (!v) { e.target.value = EP().name; return; }
+  if (await saveProfile({ name: v }, EP().id)) e.target.value = EP().name;
+});
+$('#pf-color').addEventListener('click', e => { const b = e.target.closest('button'); if (b) saveProfile({ color: Number(b.dataset.i) }, EP().id); });
+$('#pf-java').addEventListener('input', e => saveProfileDeb({ javaPath: e.target.value.trim() }, EP().id));
+$('#pf-java-pick').addEventListener('click', async () => { try { const p = await call(window.api.pickJava()); if (p) { $('#pf-java').value = p; saveProfile({ javaPath: p }, EP().id); } } catch {} });
+$('#pf-server').addEventListener('change', e => {
+  const m = /^(.+):(\d+)$/.exec(e.target.value);
+  saveProfile({ server: m ? { host: m[1], port: Number(m[2]) } : null }, EP().id);
+});
+$('#pf-dir-open').addEventListener('click', () => call(window.api.prof.openDir(EP().id)).catch(() => {}));
+$('#pf-mods-edit').addEventListener('click', async () => {
+  const id = EP().id;
+  if (id !== S.settings.profileId) { try { S.settings = await call(window.api.prof.select(id)); afterSettings(); renderMods(); } catch { return; } }
+  go('mods');
+});
+$('#pf-play').addEventListener('click', () => playProfile(EP().id));
+$('#pf-share').addEventListener('click', () => shareProfile(EP().id));
+$('#pf-dup').addEventListener('click', () => duplicateProfile(EP().id));
+$('#pf-del').addEventListener('click', () => deleteProfile(EP().id));
+$('#set-open-profile').addEventListener('click', () => openEditor(P().id));
+// ---- genel
 $('#set-onlaunch').addEventListener('change', e => save({ onLaunch: e.target.value }));
 $('#set-upd').addEventListener('change', e => save({ checkUpdates: e.target.checked }));
 $('#set-java').addEventListener('input', e => saveDeb({ javaPath: e.target.value.trim() }));
-$('#set-dir').addEventListener('change', e => { if (e.target.value.trim()) save({ gameDir: e.target.value.trim() }); });
+$('#set-dir').addEventListener('change', async e => {
+  const v = e.target.value.trim();
+  if (v) await save({ gameDir: v });
+  e.target.value = S.settings.gameDir; // geçersizse eski değer geri gelir
+});
 $('#set-java-pick').addEventListener('click', async () => { try { const p = await call(window.api.pickJava()); if (p) { $('#set-java').value = p; save({ javaPath: p }); } } catch {} });
 $('#set-dir-pick').addEventListener('click', async () => { try { const p = await call(window.api.pickDir()); if (p) { $('#set-dir').value = p; save({ gameDir: p }); } } catch {} });
 $('#set-dir-open').addEventListener('click', () => call(window.api.openDir()).catch(() => {}));
@@ -255,14 +356,13 @@ $('#update-hide').addEventListener('click', () => {
 });
 
 // ---------- ana sayfa ----------
-function activeModCount() {
-  const s = S.settings;
-  if (s.loader !== 'fabric') return { n: 0, names: [] };
-  const names = S.info.catalog.filter(m => s.mods[m.id]).map(m => m.name);
-  for (const m of s.extraMods || []) names.push(m.name);
-  if (s.version === S.info.jestronMc) {
-    if (s.jestronClient) names.unshift('Jestron Client');
-    if (s.efektMenu) names.unshift('Efekt Menüsü');
+function activeModCount(p = P()) {
+  if (!p || p.loader !== 'fabric') return { n: 0, names: [] };
+  const names = S.info.catalog.filter(m => p.mods[m.id]).map(m => m.name);
+  for (const m of p.extraMods || []) names.push(m.name);
+  if (p.version === S.info.jestronMc) {
+    if (p.jestronClient) names.unshift('Jestron Client');
+    if (p.efektMenu) names.unshift('Efekt Menüsü');
   }
   return { n: names.length, names };
 }
@@ -270,18 +370,25 @@ function favServer() {
   const list = S.settings.servers || [];
   return list.find(x => x.fav) || list[0] || null;
 }
+let homeServerKey = null;
 function renderHome() {
   if (!S.settings || !S.info) return;
-  const s = S.settings;
-  const mc = activeModCount();
-  $('#home-sub').textContent = `${s.version} · ${s.loader === 'fabric' ? 'Fabric' : 'Vanilla'}${s.loader === 'fabric' ? ' · ' + mc.n + ' mod' : ''}`;
+  const s = S.settings, p = P();
+  const mc = activeModCount(p);
+  $('#home-sub').textContent = `${p.version} · ${p.loader === 'fabric' ? 'Fabric' : 'Vanilla'}${p.loader === 'fabric' ? ' · ' + mc.n + ' mod' : ''}${p.server ? ' · ' + p.server.host : ''}`;
+  $('#home-prof-name').textContent = p.name;
+  $('#home-prof-dot').style.setProperty('--pc', pColor(p));
   $('#stat-time').textContent = fmtDuration(s.playtimeMs);
   $('#stat-time-sub').textContent = s.lastPlayedAt ? 'Son: ' + new Date(s.lastPlayedAt).toLocaleDateString('tr-TR') : "Launcher'dan oynanan";
-  $('#stat-mods').textContent = s.loader === 'fabric' ? `${mc.n} aktif` : 'Vanilla';
+  $('#stat-mods').textContent = p.loader === 'fabric' ? `${mc.n} aktif` : 'Vanilla';
   $('#stat-mods-sub').textContent = mc.names.slice(0, 3).join(', ') + (mc.names.length > 3 ? '…' : '') || '—';
-  $('#stat-ram').textContent = (s.ramMb / 1024).toFixed(1).replace('.0', '') + ' GB';
+  $('#stat-ram').textContent = ramText(p.ramMb);
+  // Optimizasyon: sunucu kutusu sadece favori sunucu değişince yeniden çizilir
   const box = $('#home-server');
   const f = favServer();
+  const key = f ? `${f.host}:${f.port}:${f.name}` : '';
+  if (key === homeServerKey && box.childElementCount) { const j = $('#home-join'); if (j) j.disabled = S.launching || S.running; return; }
+  homeServerKey = key;
   if (!f) {
     box.innerHTML = `<span class="dot-status"></span><div class="info"><b>Henüz sunucu yok</b><span>Kendi sunucunu ekle</span></div><button class="btn small" data-page="servers" type="button">Ekle</button>`;
     return;
@@ -290,11 +397,204 @@ function renderHome() {
   $('#home-join').addEventListener('click', () => play({ host: f.host, port: f.port }));
   $('#home-join').disabled = S.launching || S.running;
   pingServer(f).then(r => {
-    const st = $('#home-srv-state'); if (!st) return;
+    const st = $('#home-srv-state'); if (!st || homeServerKey !== key) return;
     $('#home-dot').className = 'dot-status ' + (r.online ? 'on' : 'off');
     st.textContent = r.online ? `Açık · ${fmtNum(r.players.online)}/${fmtNum(r.players.max)} oyuncu` : 'Çevrimdışı';
   });
 }
+// Ana sayfadaki profil seçici
+function closeProfMenu() { const m = $('#home-prof-menu'); if (m) m.classList.add('hidden'); }
+$('#home-prof-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  const m = $('#home-prof-menu');
+  if (!m.classList.contains('hidden')) return closeProfMenu();
+  m.innerHTML = S.settings.profiles.map(p => `<button type="button" data-pick="${esc(p.id)}" class="${p.id === S.settings.profileId ? 'sel' : ''}"><span class="pdot" style="--pc:${pColor(p)}"></span>${esc(p.name)}<small>${esc(p.version)} · ${p.loader === 'fabric' ? 'Fabric' : 'Vanilla'}</small></button>`).join('')
+    + '<hr><button type="button" data-pick="__manage">Profilleri yönet…</button>';
+  m.classList.remove('hidden');
+});
+$('#home-prof-menu').addEventListener('click', async e => {
+  const b = e.target.closest('[data-pick]'); if (!b) return;
+  closeProfMenu();
+  if (b.dataset.pick === '__manage') return go('profiles');
+  await selectProfile(b.dataset.pick);
+});
+document.addEventListener('click', e => { if (!e.target.closest('#home-prof')) closeProfMenu(); });
+
+// ---------- profiller ----------
+async function selectProfile(id) {
+  if (id === S.settings.profileId) return true;
+  try {
+    S.settings = await call(window.api.prof.select(id));
+    afterSettings(); renderMods();
+    toast(`Profil seçildi: ${P().name}`, 'ok');
+    return true;
+  } catch { return false; }
+}
+function renderProfiles() {
+  const el = $('#prof-grid');
+  el.innerHTML = S.settings.profiles.map((p, i) => {
+    const mc = activeModCount(p);
+    const sel = p.id === S.settings.profileId;
+    return `<div class="pcard ${sel ? 'sel' : ''}" data-id="${esc(p.id)}" style="--pc:${pColor(p)}">
+      ${sel ? '<span class="pill-tag ok sel-tag">Seçili</span>' : ''}
+      <div class="pcard-top"><div class="pcard-ico">${esc((p.name[0] || '?').toUpperCase())}</div>
+        <div class="pcard-name"><b>${esc(p.name)}</b><span>${esc(p.version)} · ${p.loader === 'fabric' ? 'Fabric' : 'Vanilla'} · ${p.lastPlayedAt ? 'Son: ' + new Date(p.lastPlayedAt).toLocaleDateString('tr-TR') : 'Hiç oynanmadı'}</span></div></div>
+      <div class="pcard-tags">
+        <span><b>${p.loader === 'fabric' ? mc.n : 0}</b> mod</span><span><b>${ramText(p.ramMb)}</b> RAM</span>
+        <span>${p.fullscreen ? 'Tam ekran' : `${p.width}×${p.height}`}</span>
+        ${p.server ? `<span>→ ${esc(p.server.host)}</span>` : ''}
+        ${p.playtimeMs >= 60000 ? `<span>${esc(fmtDuration(p.playtimeMs))}</span>` : ''}
+      </div>
+      <div class="pcard-actions">
+        <button class="btn primary small" data-pact="play" type="button" ${S.launching || S.running ? 'disabled' : ''}>Oyna</button>
+        <button class="btn small" data-pact="edit" type="button">Düzenle</button>
+        ${sel ? '' : '<button class="icon-btn" data-pact="select" title="Seç" aria-label="Seç" type="button"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button>'}
+        <button class="icon-btn" data-pact="share" title="Kodu paylaş" aria-label="Kodu paylaş" type="button"><svg viewBox="0 0 24 24"><path d="M8 12h8M12 8l4 4-4 4"/><rect x="3" y="4" width="18" height="16" rx="4"/></svg></button>
+        <button class="icon-btn" data-pact="dup" title="Kopyala" aria-label="Kopyala" type="button"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+        ${i > 0 ? `<button class="icon-btn" data-pact="up" title="Başa doğru taşı" aria-label="Başa doğru taşı" type="button">${icon.up}</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+$('#prof-grid').addEventListener('click', async e => {
+  const b = e.target.closest('[data-pact]'); if (!b) return;
+  const id = b.closest('.pcard').dataset.id;
+  switch (b.dataset.pact) {
+    case 'play': return playProfile(id);
+    case 'edit': return openEditor(id);
+    case 'select': await selectProfile(id); return renderProfiles();
+    case 'share': return shareProfile(id);
+    case 'dup': return duplicateProfile(id);
+    case 'up': try { S.settings = await call(window.api.prof.move(id, -1)); renderProfiles(); } catch {} return;
+  }
+});
+async function playProfile(id) {
+  if (S.launching || S.running) return;
+  if (!(await selectProfile(id))) return;
+  play();
+}
+async function newProfile() {
+  try {
+    const r = await call(window.api.prof.create({ name: 'Yeni profil' }));
+    S.settings = r.settings;
+    openEditor(r.id);
+    toast('Profil oluşturuldu. Adını ve ayarlarını düzenle.', 'ok');
+  } catch {}
+}
+async function duplicateProfile(id) {
+  try {
+    const r = await call(window.api.prof.create({ copyFrom: id }));
+    S.settings = r.settings;
+    openEditor(r.id);
+    toast('Profil kopyalandı', 'ok');
+  } catch {}
+}
+function deleteProfile(id) {
+  const p = profById(id); if (!p) return;
+  if (S.settings.profiles.length <= 1) return toast('Son profil silinemez.', 'err');
+  modal({
+    title: `"${p.name}" silinsin mi?`,
+    body: `<p>Profil listeden kaldırılır. Oyun klasörü (<span class="mono">instances/${esc(p.dir)}</span>), dünyalar ve ekran görüntüleri silinmez.</p>`,
+    actions: [
+      { label: 'Vazgeç' },
+      { label: 'Sil', cls: 'danger', onClick: async () => {
+        try {
+          S.settings = await call(window.api.prof.remove(id));
+          if (S.editId === id) S.editId = null;
+          afterSettings(); renderMods(); go('profiles');
+          toast('Profil silindi', 'ok');
+        } catch {}
+      } }
+    ]
+  });
+}
+async function shareProfile(id) {
+  let code;
+  try { code = await call(window.api.prof.exportCode(id)); } catch { return; }
+  const p = profById(id);
+  modal({
+    title: `${p ? p.name : 'Profil'} · profil kodu`,
+    body: `<p>Bu kodu arkadaşına gönder: Profiller › <b>Kodla içe aktar</b> ile aynı sürüm, mod ve ayarlarla profil kurulur. Kodda dosya yolu, Java yolu ve hesap bilgisi yoktur.</p>
+      <textarea id="code-out" readonly spellcheck="false">${esc(code)}</textarea>`,
+    actions: [
+      { label: 'Kapat' },
+      { label: 'Kopyala', cls: 'primary', close: false, onClick: async () => {
+        try { await navigator.clipboard.writeText(code); toast('Profil kodu kopyalandı', 'ok'); }
+        catch { const t = $('#code-out'); t.focus(); t.select(); toast('Kod seçildi, Ctrl+C ile kopyala'); }
+      } }
+    ]
+  });
+  const t = $('#code-out'); t.focus(); t.select();
+}
+function importProfile() {
+  let last = null;
+  modal({
+    title: 'Profil kodunu içe aktar',
+    body: `<p>Arkadaşının paylaştığı <b>JST1-</b> ile başlayan kodu yapıştır. Yeni bir profil olarak eklenir; mevcut profillerin değişmez.</p>
+      <textarea id="code-in" spellcheck="false" placeholder="JST1-…"></textarea><div id="code-prev"></div>`,
+    actions: [
+      { label: 'Vazgeç' },
+      { label: 'İçe aktar', cls: 'primary', id: 'code-go', close: false, onClick: async () => {
+        const code = $('#code-in').value.trim(); if (!code) return;
+        try {
+          const r = await call(window.api.prof.importCode(code));
+          S.settings = r.settings;
+          closeModal();
+          afterSettings(); renderMods(); go('profiles');
+          toast(`Profil eklendi ve seçildi: ${P().name}`, 'ok');
+          if (r.dropped.length) toast(`Güvenlik/uyumluluk için atlananlar: ${r.dropped.slice(0, 4).join(', ')}${r.dropped.length > 4 ? '…' : ''}`);
+        } catch {}
+      } }
+    ]
+  });
+  const go2 = $('#code-go'); go2.disabled = true;
+  const prev = debounce(async () => {
+    const code = $('#code-in').value.trim();
+    const box = $('#code-prev');
+    if (!code) { box.innerHTML = ''; go2.disabled = true; return; }
+    const seq = last = Symbol();
+    const r = await window.api.prof.preview(code);
+    if (seq !== last || !$('#code-prev')) return;
+    if (!r || !r.ok) { box.innerHTML = `<div class="preview"><span style="color:var(--bad)">${esc(r ? r.error : 'Okunamadı')}</span></div>`; go2.disabled = true; return; }
+    const p = r.data.profile;
+    const modN = Object.keys(p.mods).filter(k => p.mods[k]).length + p.extraMods.length;
+    box.innerHTML = `<div class="preview"><b>${esc(p.name)}</b><div class="pcard-tags">
+      <span><b>${esc(p.version || S.info.jestronMc)}</b> ${p.loader === 'fabric' ? 'Fabric' : 'Vanilla'}</span>
+      ${p.loader === 'fabric' ? `<span><b>${modN}</b> mod</span>` : ''}${p.ramMb ? `<span><b>${ramText(Math.min(p.ramMb, S.info.maxRamMb))}</b> RAM</span>` : ''}
+      ${p.server ? `<span>→ ${esc(p.server.host)}</span>` : ''}</div>
+      ${r.data.dropped.length ? `<div class="warn-list">Atlanacak: ${esc(r.data.dropped.join(', '))}</div>` : ''}</div>`;
+    go2.disabled = false;
+  }, 250);
+  $('#code-in').addEventListener('input', prev);
+  $('#code-in').focus();
+}
+$('#prof-new').addEventListener('click', newProfile);
+$('#prof-import').addEventListener('click', importProfile);
+
+// ---------- pencere (modal) ----------
+function modal({ title, body, actions }) {
+  $('#modal-title').textContent = title;
+  $('#modal-body').innerHTML = body;
+  const box = $('#modal-actions');
+  box.innerHTML = '';
+  for (const a of actions) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn ' + (a.cls || 'ghost');
+    if (a.id) b.id = a.id;
+    b.textContent = a.label;
+    b.addEventListener('click', async () => {
+      if (a.onClick) { b.disabled = true; try { await a.onClick(); } finally { b.disabled = false; } }
+      if (a.close !== false) closeModal();
+    });
+    box.appendChild(b);
+  }
+  $('#modal').classList.remove('hidden');
+}
+function closeModal() { $('#modal').classList.add('hidden'); $('#modal-body').innerHTML = ''; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').classList.contains('hidden')) { e.stopImmediatePropagation(); closeModal(); } }, true);
+
 $('#play-btn').addEventListener('click', () => play());
 
 // ---------- sunucular ----------
@@ -313,7 +613,7 @@ function renderServers(doPing, force) {
   const el = $('#srv-list');
   if (!list.length) { el.innerHTML = '<div class="empty">Sunucu ekle: ad ve adres yazıp Ekle\'ye bas. İstediğin kadar ekleyebilirsin.</div>'; return; }
   el.innerHTML = list.map((s, i) => `
-    <div class="srv-row" data-i="${i}">
+    <div class="srv-row" data-i="${i}" data-k="${esc(s.host + ':' + s.port)}">
       <span class="srv-icon">${esc(s.name[0] || '?').toUpperCase()}</span>
       <div class="srv-main">
         <div class="name"><span class="nm">${esc(s.name)}</span><span class="dot-status"></span></div>
@@ -329,13 +629,19 @@ function renderServers(doPing, force) {
     </div>`).join('');
   $$('#srv-list [data-act="join"]').forEach(b => (b.disabled = S.launching || S.running));
   if (!doPing) return;
-  list.forEach(async (s, i) => {
+  list.forEach(async s => {
+    const k = s.host + ':' + s.port;
     const r = await pingServer(s, force);
-    const row = el.querySelector(`[data-i="${i}"]`); if (!row) return;
+    // Satır anahtarla bulunur: liste bu arada yeniden çizildiyse sonuç yanlış sunucuya yazılmaz
+    const row = [...el.querySelectorAll('.srv-row')].find(x => x.dataset.k === k); if (!row) return;
     row.querySelector('.dot-status').className = 'dot-status ' + (r.online ? 'on' : 'off');
     row.querySelector('.pl').textContent = r.online ? `${fmtNum(r.players.online)}/${fmtNum(r.players.max)}` : 'Çevrimdışı';
-    row.querySelector('.lt').textContent = r.online ? `${r.latency} ms · ${esc((r.version || '').split(' ').pop())}` : (r.error || '');
-    if (r.online && r.motd) row.querySelector('.addr').textContent = r.motd.replace(/\n/g, ' · ');
+    row.querySelector('.lt').textContent = r.online ? `${r.latency} ms · ${(r.version || '').split(' ').pop()}` : (r.error || '');
+    if (r.online && r.motd) {
+      const one = r.motd.replace(/\s*\n\s*/g, ' · ').trim();
+      row.querySelector('.addr').textContent = `${s.host}${s.port !== 25565 ? ':' + s.port : ''} · ${one}`;
+      row.querySelector('.srv-main').title = r.motd;
+    }
     if (r.favicon && /^data:image\/png;base64,/.test(r.favicon)) {
       const ic = row.querySelector('.srv-icon');
       ic.innerHTML = '';
@@ -407,17 +713,17 @@ function modCard(m, on, opts = {}) {
 function renderMods() {
   const cats = ['Tümü', ...new Set(S.info.catalog.map(m => m.cat))];
   $('#mod-cats').innerHTML = cats.map(c => `<button class="chip ${c === S.modCat ? 'active' : ''}" data-cat="${esc(c)}" type="button">${esc(c)}</button>`).join('');
-  $('#mod-grid').innerHTML = S.info.catalog.filter(m => S.modCat === 'Tümü' || m.cat === S.modCat).map(m => modCard(m, S.settings.mods[m.id])).join('');
-  const extra = S.settings.extraMods || [];
+  $('#mod-grid').innerHTML = S.info.catalog.filter(m => S.modCat === 'Tümü' || m.cat === S.modCat).map(m => modCard(m, P().mods[m.id])).join('');
+  const extra = P().extraMods || [];
   $('#mod-extra').innerHTML = extra.length
     ? extra.map(m => modCard(m, true, { meta: 'Modrinth', button: `<button class="btn danger small" data-unextra="${esc(m.id)}" type="button">Kaldır</button>` })).join('')
     : '<div class="empty">Modrinth aramasından eklediğin modlar burada görünür.</div>';
   renderJestron();
 }
 function renderJestron() {
-  const s = S.settings;
+  const s = P();
   const ok = s.version === S.info.jestronMc && s.loader === 'fabric';
-  const warn = ok ? '' : `<div class="notice">Bu modlar sadece <b>${esc(S.info.jestronMc)} Fabric</b> ile çalışır. <a href="#" data-page="settings">Sürümü değiştir</a></div>`;
+  const warn = ok ? '' : `<div class="notice">Bu modlar sadece <b>${esc(S.info.jestronMc)} Fabric</b> ile çalışır. <a href="#" data-editprof>Profilin sürümünü değiştir</a></div>`;
   const ef = S.efekt ? `Son sürüm: ${esc(S.efekt.version)}` : 'GitHub release\'inden indirilir';
   $('#jestron-cards').innerHTML = `
     <div class="card jcard">
@@ -434,8 +740,8 @@ function renderJestron() {
     ${warn}`;
 }
 $('#jestron-cards').addEventListener('change', e => {
-  if (e.target.id === 'j-client') save({ jestronClient: e.target.checked });
-  if (e.target.id === 'j-efekt') save({ efektMenu: e.target.checked });
+  if (e.target.id === 'j-client') saveProfile({ jestronClient: e.target.checked });
+  if (e.target.id === 'j-efekt') saveProfile({ efektMenu: e.target.checked });
 });
 $('#jestron-cards').addEventListener('click', e => {
   if (e.target.id === 'j-efekt-gh') call(window.api.openUrl(`https://github.com/${S.info.efektRepo}/releases`)).catch(() => {});
@@ -443,7 +749,7 @@ $('#jestron-cards').addEventListener('click', e => {
 $('#mod-cats').addEventListener('click', e => { const c = e.target.closest('[data-cat]'); if (c) { S.modCat = c.dataset.cat; renderMods(); } });
 $('#mod-grid').addEventListener('change', e => {
   const id = e.target.dataset.mod; if (!id) return;
-  save({ mods: { ...S.settings.mods, [id]: e.target.checked }, preset: 'custom' }).then(renderMods);
+  saveProfile({ mods: { [id]: e.target.checked }, preset: 'custom' }).then(renderMods);
 });
 $$('[data-tab]').forEach(t => t.addEventListener('click', () => {
   $$('[data-tab]').forEach(x => x.classList.toggle('active', x === t));
@@ -459,17 +765,20 @@ $('#search-type').addEventListener('click', e => {
 async function searchMods() {
   const q = $('#mod-q').value.trim(); if (!q) return;
   const type = S.searchType;
+  const version = P().version;
+  const seq = ++S.searchSeq; // eski aramanın geç gelen sonucu yenisinin üstüne yazılmasın
   $('#mod-results').innerHTML = '<div class="empty">Aranıyor…</div>';
   let hits = [];
-  try { hits = await call(window.api.search(q, S.settings.version, type)); }
-  catch { $('#mod-results').innerHTML = '<div class="empty">Arama başarısız.</div>'; return; }
+  try { hits = await call(window.api.search(q, version, type)); }
+  catch { if (seq === S.searchSeq) $('#mod-results').innerHTML = '<div class="empty">Arama başarısız.</div>'; return; }
+  if (seq !== S.searchSeq) return;
   S.lastHits = hits;
-  const have = new Set([...(S.settings.extraMods || []).map(m => m.id), ...S.info.catalog.map(m => m.id)]);
+  const have = new Set([...(P().extraMods || []).map(m => m.id), ...S.info.catalog.map(m => m.id)]);
   const label = type === 'mod' ? 'Ekle' : 'İndir';
   $('#mod-results').innerHTML = hits.length ? hits.map(h => modCard(h, type === 'mod' && have.has(h.id), {
     meta: `${h.author} · ${fmtNum(h.downloads)} indirme`,
     button: type === 'mod' && have.has(h.id) ? '<button class="btn small" disabled type="button">Ekli</button>' : `<button class="btn primary small" data-add="${esc(h.id)}" type="button">${label}</button>`
-  })).join('') : `<div class="empty">${esc(S.settings.version)} için sonuç yok.</div>`;
+  })).join('') : `<div class="empty">${esc(version)} için sonuç yok.</div>`;
 }
 $('#mod-search').addEventListener('click', searchMods);
 $('#mod-q').addEventListener('keydown', e => { if (e.key === 'Enter') searchMods(); });
@@ -478,9 +787,10 @@ $('#mod-results').addEventListener('click', async e => {
   const h = S.lastHits.find(x => x.id === b.dataset.add); if (!h) return;
   b.disabled = true;
   if (h.type === 'mod') {
-    await save({ extraMods: [...(S.settings.extraMods || []), { id: h.id, name: h.name, desc: h.desc, icon: h.icon }] });
+    const ok = await saveProfile({ extraMods: [...(P().extraMods || []), { id: h.id, name: h.name, desc: h.desc, icon: h.icon }] });
+    if (!ok) { b.disabled = false; return; }
     b.textContent = 'Ekli';
-    renderMods(); toast(h.name + ' eklendi', 'ok');
+    renderMods(); toast(`${h.name} eklendi (${P().name})`, 'ok');
     return;
   }
   b.textContent = 'İndiriliyor…';
@@ -489,7 +799,7 @@ $('#mod-results').addEventListener('click', async e => {
 });
 $('#mod-extra').addEventListener('click', async e => {
   const b = e.target.closest('[data-unextra]'); if (!b) return;
-  await save({ extraMods: S.settings.extraMods.filter(m => m.id !== b.dataset.unextra) });
+  await saveProfile({ extraMods: (P().extraMods || []).filter(m => m.id !== b.dataset.unextra) });
   renderMods();
 });
 $('#mods-folder').addEventListener('click', () => call(window.api.openSub('mods')).catch(() => {}));
@@ -565,7 +875,7 @@ function setPlayState() {
   const b = $('#play-btn');
   b.disabled = busy;
   b.querySelector('span').textContent = S.running ? 'Oyunda' : S.launching ? 'Başlatılıyor…' : 'Oyna';
-  $$('[data-act="join"], #home-join').forEach(x => (x.disabled = busy));
+  $$('[data-act="join"], #home-join, [data-pact="play"], #pf-play').forEach(x => (x.disabled = busy));
 }
 // ---------- yükleme ekranı ----------
 const LAUNCH_STEPS = [
@@ -583,7 +893,9 @@ const TIPS = [
   'Oyunda F2 ile aldığın ekran görüntüleri Galeri sayfasında görünür.',
   'Sunucular sayfasına istediğin kadar sunucu ekleyebilir, birini favori yapabilirsin.',
   'Oyun çökerse Konsol sayfası nedenini ve çözümünü gösterir.',
-  'Ayarlar › Performans bölümünden RAM miktarını ve ön ayarları seçebilirsin.',
+  'Profiller › Düzenle › Performans bölümünden RAM miktarını ve ön ayarları seçebilirsin.',
+  'Her profilin kendi sürümü, modları ve oyun klasörü var; Profiller sayfasından yeni profil aç.',
+  'Profilini arkadaşınla paylaş: Profiller › Kodu paylaş ile tek satırlık kod oluşur.',
   'İlk açılışta dosyalar indirilir; sonraki açılışlar çok daha hızlı olur.'
 ];
 const tickSvg = '<svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.6l4.6-5"/></svg>';
@@ -637,22 +949,24 @@ function endLaunch(delay) {
   L.hideTimer = setTimeout(() => { showLaunch(false); $('#progress').classList.add('hidden'); L.state = 'idle'; }, delay);
 }
 function startLaunch(server) {
-  const s = S.settings || {};
+  const s = P();
   const acc = selectedAcc();
   clearTimeout(L.hideTimer);
   L.pct = 0; L.state = 'busy';
   const el = $('#launch');
   el.classList.remove('done', 'failed');
   $('#ln-kicker').textContent = 'Oyun hazırlanıyor';
-  $('#ln-title').textContent = `${s.loader === 'fabric' ? 'Fabric' : 'Minecraft'} ${s.version || ''}`.trim();
+  $('#ln-title').textContent = s.name;
   $('#ln-acc').textContent = acc ? acc.name : '—';
   setAvatar($('#ln-avatar'), acc);
-  $('#ln-target').textContent = server ? `${server.name || server.host}${server.port && server.port !== 25565 ? ':' + server.port : ''}` : 'Ana menü';
+  const tgt = server || (s.server ? { ...s.server, name: ((S.settings.servers || []).find(x => x.host === s.server.host && x.port === s.server.port) || {}).name } : null);
+  $('#ln-target').textContent = tgt ? `${tgt.name || tgt.host}${!tgt.name && tgt.port && tgt.port !== 25565 ? ':' + tgt.port : ''}` : 'Ana menü';
   $('#ln-bg').textContent = 'Arka planda devam et';
-  const mc = activeModCount();
+  const mc = activeModCount(s);
   const presetName = { low: 'Düşük PC', balanced: 'Dengeli', high: 'Yüksek' }[s.preset] || 'Özel';
   const chips = [
-    [s.loader === 'fabric' ? mc.n : '', s.loader === 'fabric' ? 'mod' : 'Vanilla'],
+    [s.version, s.loader === 'fabric' ? 'Fabric' : 'Vanilla'],
+    ...(s.loader === 'fabric' ? [[mc.n, 'mod']] : []),
     [((s.ramMb || 0) / 1024).toFixed(1).replace('.0', ''), 'GB RAM'],
     [s.fullscreen ? 'Tam ekran' : `${s.width}×${s.height}`, ''],
     [presetName, 'ön ayar']
@@ -740,14 +1054,11 @@ setTimeout(hideSplash, 8000); // ne olursa olsun takılı kalmasın
 
 (async function init() {
   try {
-    splashStep('Başlatılıyor', 0.15);
-    S.info = await call(window.api.info());
+    splashStep('Ayarlar ve hesaplar yükleniyor', 0.3);
+    // Optimizasyon: üç istek sırayla değil aynı anda
+    [S.info, S.settings, S.accounts] = await Promise.all([call(window.api.info()), call(window.api.settings.get()), call(window.api.acc.list())]);
     $('#sp-ver').textContent = `${S.info.name} ${S.info.version}`;
-    splashStep('Ayarlar yükleniyor', 0.4);
-    S.settings = await call(window.api.settings.get());
-    splashStep('Hesaplar yükleniyor', 0.65);
-    S.accounts = await call(window.api.acc.list());
-    splashStep('Arayüz hazırlanıyor', 0.85);
+    splashStep('Arayüz hazırlanıyor', 0.8);
   } catch (e) { hideSplash(); toast('Başlatma hatası: ' + e.message, 'err'); return; }
   bindSettings();
   renderAccounts();

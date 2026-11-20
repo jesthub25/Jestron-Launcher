@@ -110,7 +110,7 @@ async function ensure(instanceDir, settings, log) {
 
   // eskiler / kapatılanlar
   for (const f of man.files) {
-    if (!want.includes(f)) {
+    if (typeof f === 'string' && !want.includes(f) && /^[^\\/]+\.jar$/i.test(f) && !f.includes('..')) {
       try { fs.unlinkSync(path.join(modsDir, f)); log(`[Jestron] Kaldırıldı: ${f}`); } catch {}
     }
   }

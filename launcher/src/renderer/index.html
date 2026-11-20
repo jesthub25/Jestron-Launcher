@@ -31,6 +31,7 @@
       <div class="logo">jestron<span class="dot">.</span></div>
       <nav aria-label="Ana menü">
         <a href="#" class="nav active" data-page="home">Ana sayfa</a>
+        <a href="#" class="nav" data-page="profiles">Profiller</a>
         <a href="#" class="nav" data-page="servers">Sunucular</a>
         <a href="#" class="nav" data-page="mods">Modlar</a>
         <a href="#" class="nav" data-page="gallery">Galeri</a>
@@ -60,7 +61,10 @@
             <p class="sub" id="home-sub">—</p>
             <div class="row">
               <button id="play-btn" class="pill primary big" type="button"><svg viewBox="0 0 24 24" class="fill"><path d="M7 4.5v15l13-7.5z"/></svg><span>Oyna</span></button>
-              <button class="pill outline big" data-page="settings" type="button">Sürümü değiştir</button>
+              <div class="prof-pick" id="home-prof">
+                <button class="pill outline big" id="home-prof-btn" type="button" aria-haspopup="listbox"><span class="pdot" id="home-prof-dot"></span><span id="home-prof-name">Profil</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+                <div class="prof-menu hidden" id="home-prof-menu" role="listbox"></div>
+              </div>
             </div>
           </div>
           <div class="home-art">
@@ -71,6 +75,56 @@
           <div><small>Oyun süresi</small><b id="stat-time">—</b><span id="stat-time-sub">Launcher'dan oynanan</span></div>
           <div><small>Modlar</small><b id="stat-mods">—</b><span id="stat-mods-sub">—</span></div>
           <div><small>Bellek</small><b id="stat-ram">—</b><span>Java otomatik kurulur</span></div>
+        </div>
+      </section>
+
+      <!-- PROFİLLER -->
+      <section class="page" id="page-profiles">
+        <header class="page-head"><div><h2>Profiller</h2><p>Her profilin kendi sürümü, modları, RAM'i ve oyun klasörü var. Kodla arkadaşlarınla paylaş.</p></div>
+          <div class="row"><button class="btn ghost" id="prof-import" type="button">Kodla içe aktar</button><button class="btn primary" id="prof-new" type="button">Yeni profil</button></div></header>
+        <div class="prof-grid" id="prof-grid"></div>
+      </section>
+
+      <!-- PROFİL DÜZENLE -->
+      <section class="page" id="page-profile">
+        <header class="page-head"><div><button class="link small back" data-page="profiles" type="button">‹ Profiller</button><h2 id="pf-title">Profil</h2><p id="pf-sub">—</p></div>
+          <div class="row"><button class="btn ghost" id="pf-share" type="button">Kodu paylaş</button><button class="btn primary" id="pf-play" type="button">Bu profille oyna</button></div></header>
+        <div class="settings">
+          <div class="group">
+            <h3>Genel</h3>
+            <div class="srow"><div><b>Profil adı</b><span>En fazla 32 karakter</span></div><input id="pf-name" maxlength="32" class="w-md"></div>
+            <div class="srow"><div><b>Renk</b><span>Profil kartında ve ana sayfada görünür</span></div><div class="swatches" id="pf-color"></div></div>
+          </div>
+          <div class="group">
+            <h3>Oyun</h3>
+            <div class="srow"><div><b>Sürüm</b><span>Jestron Client ve Efekt Menüsü 1.21.4 içindir</span></div><select id="set-version"></select></div>
+            <div class="srow"><div><b>Snapshot sürümleri</b><span>Deneme sürümlerini listede göster (tüm profiller)</span></div><span class="switch"><input type="checkbox" id="set-snap"><i></i></span></div>
+            <div class="srow"><div><b>Mod yükleyici</b><span>Fabric: modlu · Vanilla: saf oyun</span></div><div class="seg" id="set-loader"><button data-v="fabric" type="button">Fabric</button><button data-v="vanilla" type="button">Vanilla</button></div></div>
+            <div class="srow"><div><b>Modlar</b><span id="pf-mods">—</span></div><button class="btn ghost" id="pf-mods-edit" type="button">Modları düzenle</button></div>
+            <div class="srow"><div><b>Direkt bağlan</b><span>Oyna'ya basınca bu sunucuya otomatik gir</span></div><select id="pf-server"></select></div>
+          </div>
+          <div class="group">
+            <h3>Performans</h3>
+            <div class="srow"><div><b>Ön ayar</b><span>RAM, Java ayarları ve modları birlikte ayarlar</span></div><div class="seg" id="set-preset"><button data-v="low" type="button">Düşük PC</button><button data-v="balanced" type="button">Dengeli</button><button data-v="high" type="button">Yüksek</button></div></div>
+            <div class="srow col"><div class="ram-head"><div><b>Bellek (RAM)</b><span id="ram-hint">—</span></div><b class="big-num" id="ram-val">—</b></div><input type="range" id="set-ram" min="1024" step="512"></div>
+            <div class="srow col"><div><b>JVM argümanları</b><span>Bilmiyorsan dokunma</span></div><input id="set-jvm" class="mono"></div>
+          </div>
+          <div class="group">
+            <h3>Görüntü</h3>
+            <div class="srow"><div><b>Çözünürlük</b><span>Oyun penceresi</span></div><div class="row"><input id="set-w" type="number" class="num" min="640"><span class="muted">×</span><input id="set-h" type="number" class="num" min="480"></div></div>
+            <div class="srow"><div><b>Tam ekran</b><span>Oyunu tam ekran başlat</span></div><span class="switch"><input type="checkbox" id="set-fs"><i></i></span></div>
+          </div>
+          <div class="group">
+            <h3>Gelişmiş</h3>
+            <div class="srow col"><div><b>Java yolu (bu profil)</b><span>Boş bırak: genel ayar ya da otomatik Java</span></div><div class="search-row"><input id="pf-java" class="mono" placeholder="Genel ayar / otomatik"><button class="btn ghost" id="pf-java-pick" type="button">Seç</button></div></div>
+            <div class="srow"><div><b>Oyun klasörü</b><span class="mono small" id="pf-dir">—</span></div><button class="btn ghost" id="pf-dir-open" type="button">Aç</button></div>
+            <div class="srow"><div><b>İstatistik</b><span id="pf-stats">—</span></div></div>
+          </div>
+          <div class="group">
+            <h3>Profil</h3>
+            <div class="srow"><div><b>Kopyala</b><span>Aynı ayarlarla yeni profil; tuş atamaları ve mod ayarları da kopyalanır</span></div><button class="btn ghost" id="pf-dup" type="button">Kopyala</button></div>
+            <div class="srow"><div><b>Sil</b><span>Profil listeden kalkar; oyun klasörü ve dünyalar silinmez</span></div><button class="btn danger" id="pf-del" type="button">Sil</button></div>
+          </div>
         </div>
       </section>
 
@@ -99,7 +153,7 @@
           <button class="tab" data-tab="packs" type="button">Paketlerim</button>
           <button class="tab" data-tab="extra" type="button">Eklediklerim</button>
         </div>
-        <div id="mods-vanilla-warn" class="notice hidden">Vanilla seçili; modlar sadece Fabric ile çalışır. <a href="#" data-page="settings">Ayarlar</a>'dan Fabric'e geç.</div>
+        <div id="mods-vanilla-warn" class="notice hidden">Bu profilde Vanilla seçili; modlar sadece Fabric ile çalışır. <a href="#" data-editprof>Profil ayarlarından</a> Fabric'e geç.</div>
         <div class="tabpane active" id="tab-catalog">
           <div class="chips" id="mod-cats"></div>
           <div class="grid" id="mod-grid"></div>
@@ -168,32 +222,19 @@
           </div>
           <div class="group">
             <h3>Oyun</h3>
-            <div class="srow"><div><b>Sürüm</b><span>Jestron Client ve Efekt Menüsü 1.21.4 içindir</span></div><select id="set-version"></select></div>
-            <div class="srow"><div><b>Snapshot sürümleri</b><span>Deneme sürümlerini listede göster</span></div><span class="switch"><input type="checkbox" id="set-snap"><i></i></span></div>
-            <div class="srow"><div><b>Mod yükleyici</b><span>Fabric: modlu · Vanilla: saf oyun</span></div><div class="seg" id="set-loader"><button data-v="fabric" type="button">Fabric</button><button data-v="vanilla" type="button">Vanilla</button></div></div>
-          </div>
-          <div class="group">
-            <h3>Performans</h3>
-            <div class="srow"><div><b>Ön ayar</b><span>RAM, Java ayarları ve modları birlikte ayarlar</span></div><div class="seg" id="set-preset"><button data-v="low" type="button">Düşük PC</button><button data-v="balanced" type="button">Dengeli</button><button data-v="high" type="button">Yüksek</button></div></div>
-            <div class="srow col"><div class="ram-head"><div><b>Bellek (RAM)</b><span id="ram-hint">—</span></div><b class="big-num" id="ram-val">—</b></div><input type="range" id="set-ram" min="1024" step="512"></div>
-            <div class="srow col"><div><b>JVM argümanları</b><span>Bilmiyorsan dokunma</span></div><input id="set-jvm" class="mono"></div>
-          </div>
-          <div class="group">
-            <h3>Görüntü</h3>
-            <div class="srow"><div><b>Çözünürlük</b><span>Oyun penceresi</span></div><div class="row"><input id="set-w" type="number" class="num" min="640"><span class="muted">×</span><input id="set-h" type="number" class="num" min="480"></div></div>
-            <div class="srow"><div><b>Tam ekran</b><span>Oyunu tam ekran başlat</span></div><span class="switch"><input type="checkbox" id="set-fs"><i></i></span></div>
+            <div class="srow"><div><b>Sürüm, modlar, RAM, çözünürlük</b><span>Bunlar artık her profilin kendi ayarı</span></div><button class="btn ghost" id="set-open-profile" type="button">Profil ayarları</button></div>
           </div>
           <div class="group">
             <h3>Launcher</h3>
             <div class="srow"><div><b>Oyun açılınca</b><span>Launcher penceresine ne olsun</span></div>
               <select id="set-onlaunch"><option value="hide">Gizle, oyun kapanınca geri getir</option><option value="close">Gizle, oyun kapanınca kapat</option><option value="keep">Açık kalsın</option></select></div>
             <div class="srow"><div><b>Güncellemeleri kontrol et</b><span>Yeni launcher sürümü çıkınca haber ver</span></div><span class="switch"><input type="checkbox" id="set-upd"><i></i></span></div>
-            <div class="srow col"><div><b>Java yolu</b><span>Boş bırak: doğru Java otomatik indirilir</span></div><div class="search-row"><input id="set-java" class="mono" placeholder="Otomatik"><button class="btn ghost" id="set-java-pick" type="button">Seç</button></div></div>
+            <div class="srow col"><div><b>Java yolu (genel)</b><span>Boş bırak: doğru Java otomatik indirilir. Profil kendi yolunu verebilir.</span></div><div class="search-row"><input id="set-java" class="mono" placeholder="Otomatik"><button class="btn ghost" id="set-java-pick" type="button">Seç</button></div></div>
             <div class="srow col"><div><b>Oyun klasörü</b><span>Sürümler, Java ve oyun profilleri burada</span></div><div class="search-row"><input id="set-dir" class="mono"><button class="btn ghost" id="set-dir-pick" type="button">Seç</button><button class="btn ghost" id="set-dir-open" type="button">Aç</button></div></div>
           </div>
           <div class="group">
             <h3>Bakım</h3>
-            <div class="srow"><div><b>Onar</b><span>Seçili sürümün dosyalarını ve mod önbelleğini sıfırlar; bir sonraki oyunda yeniden indirilir</span></div><button class="btn" id="set-repair" type="button">Onar</button></div>
+            <div class="srow"><div><b>Onar</b><span>Seçili profilin sürüm dosyalarını ve mod önbelleğini sıfırlar; bir sonraki oyunda yeniden indirilir</span></div><button class="btn" id="set-repair" type="button">Onar</button></div>
             <div class="srow"><div><b>Güncelleme</b><span id="upd-status">—</span></div><button class="btn ghost" id="set-upd-check" type="button">Şimdi kontrol et</button></div>
           </div>
           <p class="about" id="about"></p>
@@ -232,6 +273,13 @@
         <div class="prog-bar"><i id="prog-fill"></i></div>
       </button>
     </main>
+  </div>
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <h3 id="modal-title">—</h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
   </div>
   <div id="toasts" aria-live="polite"></div>
   <script src="app.js"></script>

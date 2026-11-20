@@ -26,7 +26,7 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
   // Optimizasyon: aynı mod listesi 6 saat içinde tekrar çözülmez (Modrinth'e onlarca istek atılmaz)
   const key = game + '|' + [...new Set(projects)].sort().join(',');
   const fresh = man.key === key && Array.isArray(man.resolved) && typeof man.at === 'number' && Date.now() - man.at < RESOLVE_TTL;
-  if (fresh) {
+  if (fresh && man.resolved.every(w => w && safeName(w.filename) && typeof w.url === 'string')) {
     onProgress && onProgress('Modlar kontrol ediliyor', 0.5);
     await pool(man.resolved, 6, async w => {
       try {
@@ -44,12 +44,25 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
   const seen = new Set();
   let netError = false;
 
+  // Optimizasyon: üst düzey modların sürüm bilgisi paralel (6'şar) önceden istenir; çözümleme sırası aynı kalır
+  const pending = new Map();
+  const fetchVer = (project, versionId) => {
+    const k = versionId ? 'v:' + versionId : 'p:' + project;
+    if (!pending.has(k)) {
+      const pr = versionId ? fetchJson(`${API}/version/${encodeURIComponent(versionId)}`) : versionFor(project, game);
+      pr.catch(() => {}); // yakalanmamış hata uyarısı olmasın; hata resolve() içinde ele alınır
+      pending.set(k, pr);
+    }
+    return pending.get(k);
+  };
+  await pool([...new Set(projects)], 6, async pr => { try { await fetchVer(pr, null); } catch {} });
+
   async function resolve(project, versionId, parentName) {
     if (!versionId && seen.has(project)) return;
     seen.add(project);
     let v;
     try {
-      v = versionId ? await fetchJson(`${API}/version/${versionId}`) : await versionFor(project, game);
+      v = await fetchVer(project, versionId);
     } catch (e) {
       if (String(e.message).startsWith('HTTP 404')) v = null;
       else { netError = true; log && log(`[Mod] ${project} alınamadı: ${e.message}`); return; }
@@ -62,8 +75,8 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
     // Zaten seçiliyse dur; sadece sabit sürüm isteyen bağımlılık (ör. Iris -> Sodium) üzerine yazabilir
     if (cur && (cur.versionId === v.id || !versionId)) return;
     seen.add(v.project_id);
-    const f = v.files.find(x => x.primary) || v.files[0];
-    if (!f) { skipped.push(project); return; }
+    const f = (v.files || []).find(x => x.primary) || (v.files || [])[0];
+    if (!f || !safeName(f.filename)) { skipped.push(project); return; }
     resolved.set(v.project_id, { versionId: v.id, url: f.url, filename: f.filename, sha1: f.hashes && f.hashes.sha1 });
     for (const d of v.dependencies || []) {
       if (d.dependency_type !== 'required' || !d.project_id) continue;
@@ -87,8 +100,8 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
   const wantedNames = new Set(wanted.map(w => w.filename));
 
   // Daha önce launcher'ın kurduğu ama artık istenmeyen dosyaları sil (kullanıcının kendi modlarına dokunma)
-  for (const old of man.files || []) {
-    if (!wantedNames.has(old)) {
+  for (const old of Array.isArray(man.files) ? man.files : []) {
+    if (!wantedNames.has(old) && safeName(old)) {
       try { fs.unlinkSync(path.join(modsDir, old)); log && log(`[Mod] Kaldırıldı: ${old}`); } catch {}
     }
   }

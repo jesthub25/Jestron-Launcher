@@ -47,7 +47,9 @@ async function ping(hostIn, portIn = 25565, timeout = 5000) {
   return new Promise((res) => {
     const sock = net.createConnection({ host, port });
     let buf = Buffer.alloc(0), start = 0, status = null, finished = false;
-    const done = r => { if (finished) return; finished = true; sock.destroy(); res(r); };
+    const done = r => { if (finished) return; finished = true; clearTimeout(hard); sock.destroy(); res(r); };
+    // setTimeout boşta kalma süresidir; yavaş veri gönderen sunucu için ayrıca kesin bir süre sınırı
+    const hard = setTimeout(() => done({ online: false, error: 'Zaman aşımı' }), timeout + 1000);
     sock.setTimeout(timeout, () => done({ online: false, error: 'Zaman aşımı' }));
     sock.on('error', e => done({ online: false, error: e.code || e.message }));
     sock.on('connect', () => {
@@ -57,6 +59,7 @@ async function ping(hostIn, portIn = 25565, timeout = 5000) {
     });
     sock.on('data', chunk => {
       buf = Buffer.concat([buf, chunk]);
+      if (buf.length > 1024 * 1024) return done({ online: false, error: 'Geçersiz yanıt' });
       try {
         while (true) {
           const len = readVarint(buf, 0);

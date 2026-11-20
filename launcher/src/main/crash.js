@@ -2,9 +2,9 @@
 'use strict';
 
 const RULES = [
-  { re: /java\.lang\.OutOfMemoryError|GC overhead limit exceeded/i, title: 'Bellek yetmedi', hint: 'Ayarlar › Performans › Bellek (RAM) değerini artır (en az 4 GB önerilir) ya da ağır modları kapat.' },
-  { re: /Could not reserve enough space|Invalid maximum heap size|Could not create the Java Virtual Machine/i, title: 'Java belleği ayıramadı', hint: 'RAM değeri bilgisayarın boşta olan belleğinden fazla. Ayarlar › Performans › Bellek değerini düşür.' },
-  { re: /UnsupportedClassVersionError|has been compiled by a more recent version of the Java Runtime/i, title: 'Java sürümü uyumsuz', hint: 'Ayarlar › Launcher › Java yolu kutusunu boşalt; launcher doğru Java\'yı kendisi indirir.' },
+  { re: /java\.lang\.OutOfMemoryError|GC overhead limit exceeded/i, title: 'Bellek yetmedi', hint: 'Profiller › Düzenle › Performans › Bellek (RAM) değerini artır (en az 4 GB önerilir) ya da ağır modları kapat.' },
+  { re: /Could not reserve enough space|Invalid maximum heap size|Could not create the Java Virtual Machine/i, title: 'Java belleği ayıramadı', hint: 'RAM değeri bilgisayarın boşta olan belleğinden fazla. Profiller › Düzenle › Performans › Bellek değerini düşür.' },
+  { re: /UnsupportedClassVersionError|has been compiled by a more recent version of the Java Runtime/i, title: 'Java sürümü uyumsuz', hint: 'Ayarlar › Launcher › Java yolu ve profilin Gelişmiş › Java yolu kutularını boşalt; launcher doğru Java\'yı kendisi indirir.' },
   { re: /Incompatible mods? (found|set)|requires (any version|version) .* of|Mod resolution failed|is incompatible with/i, title: 'Mod uyumsuzluğu', hint: 'Bir mod başka bir modla ya da bu Minecraft sürümüyle uyumsuz. Modlar sekmesinde son eklediğin modu kapat. Logun ilgili satırı aşağıda.' },
   { re: /Mixin apply failed|MixinTransformerError|InvalidInjectionException|Critical injection failure/i, title: 'Mod yükleme hatası (mixin)', hint: 'Bir mod bu sürümde düzgün yüklenemedi. Son eklediğin modu kapatıp tekrar dene.' },
   { re: /GLFW error 65542|WGL: The driver does not appear to support OpenGL|Pixel format not accelerated|OpenGL.*not supported/i, title: 'Ekran kartı sürücüsü', hint: 'Ekran kartı sürücünü güncelle. Dizüstünde oyunu yüksek performanslı GPU ile çalıştırmayı dene.' },

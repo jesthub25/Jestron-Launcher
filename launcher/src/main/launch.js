@@ -19,6 +19,7 @@ function kill() {
 }
 
 /**
+ * Seçili profili başlatır.
  * @param {object} opts { server?: {host, port} }
  * @param {object} ev   { progress(stage, pct), log(line), started(), closed(code) }
  */
@@ -29,9 +30,11 @@ async function launch(opts, evIn) {
   let last = 0;
   const ev = { ...evIn, progress: (stage, pct) => { last = Math.max(last, pct); evIn.progress(stage, last); } };
   try {
-    const s = store.getSettings();
-    const root = s.gameDir;
+    const g = store.getSettings();
+    const s = store.activeProfile(); // profil: sürüm, loader, modlar, RAM, çözünürlük...
+    const root = g.gameDir;
     fs.mkdirSync(root, { recursive: true });
+    ev.log(`[Jestron] Profil: ${s.name} (${s.version} ${s.loader === 'fabric' ? 'Fabric' : 'Vanilla'})`);
 
     ev.progress('Hesap doğrulanıyor', 0.02);
     const acc = await auth.getLaunchAuth();
@@ -49,7 +52,9 @@ async function launch(opts, evIn) {
     }
 
     // Java
-    let javaPath = s.javaPath && fs.existsSync(s.javaPath) ? s.javaPath : null;
+    const wantJava = s.javaPath || g.javaPath;
+    let javaPath = wantJava && fs.existsSync(wantJava) ? wantJava : null;
+    if (wantJava && !javaPath) ev.log(`[Jestron] Java yolu bulunamadı (${wantJava}), otomatik Java kullanılıyor`);
     if (!javaPath) {
       const comp = vjson.javaVersion ? vjson.javaVersion.component : 'jre-legacy';
       ev.progress(`Java hazırlanıyor (${comp})`, 0.1);
@@ -57,8 +62,8 @@ async function launch(opts, evIn) {
     }
     ev.log(`[Jestron] Java: ${javaPath}`);
 
-    // Her sürüm+loader için ayrı oyun klasörü (modlar karışmasın)
-    const instanceDir = path.join(root, 'instances', `${s.version}-${s.loader}`);
+    // Her profilin kendi oyun klasörü (modlar, dünyalar, ayarlar karışmaz)
+    const instanceDir = store.instanceDir(s);
     fs.mkdirSync(instanceDir, { recursive: true });
 
     if (s.loader === 'fabric') {
@@ -79,9 +84,9 @@ async function launch(opts, evIn) {
     }
 
     // Launcher'daki sunucular oyunun Çok Oyunculu listesine de yazılır
-    if (s.syncServers) {
+    if (g.syncServers) {
       try {
-        const r = serversdat.sync(instanceDir, s.servers || []);
+        const r = serversdat.sync(instanceDir, g.servers || []);
         if (r.added) ev.log(`[Jestron] ${r.added} sunucu oyun içi listeye yazıldı`);
       } catch (e) {
         ev.log(`[Jestron] Sunucu listesi yazılamadı: ${e.message}`);
@@ -89,9 +94,12 @@ async function launch(opts, evIn) {
     }
 
     // Sunucuya direkt bağlanma
+    // Sunucuya direkt bağlanma: Bağlan düğmesi ya da profilin otomatik sunucusu
     let quickPlay;
-    if (opts && opts.server && opts.server.host) {
-      const id = `${opts.server.host}:${opts.server.port || 25565}`;
+    const target = opts && opts.server && opts.server.host ? opts.server : s.server;
+    if (target && target.host) {
+      const id = `${target.host}:${target.port || 25565}`;
+      ev.log(`[Jestron] Direkt bağlanılacak sunucu: ${id}`);
       quickPlay = versions.atLeast(s.version, '1.20') ? { type: 'multiplayer', identifier: id } : { type: 'legacy', identifier: id };
     }
 
@@ -126,22 +134,24 @@ async function launch(opts, evIn) {
     ev.progress('Oyun dosyaları kontrol ediliyor', 0.4);
     const proc = await client.launch(mclcOpts);
     if (!proc) throw new Error('Oyun başlatılamadı. Konsol sekmesine bak.');
-    running.proc = proc;
-    ev.progress('Oyun başlatıldı', 1);
-    ev.started();
-
     const me = running;
+    me.proc = proc;
     const startedAt = Date.now();
-    proc.on('close', code => {
-      running = null;
-      const played = Date.now() - startedAt;
-      try {
-        const cur = store.getSettings();
-        store.setSettings({ playtimeMs: (cur.playtimeMs || 0) + Math.max(0, played), lastPlayedAt: Date.now() });
-      } catch {}
+    const profileId = s.id;
+    let ended = false;
+    const end = code => {
+      if (ended) return;
+      ended = true;
+      if (running === me) running = null;
+      try { store.addPlaytime(profileId, Date.now() - startedAt); } catch {}
       ev.log(`[Jestron] Oyun kapandı (kod ${code})`);
       ev.closed(code, me.killed);
-    });
+    };
+    // Java çalıştırılamazsa 'error' gelir ve 'close' gelmeyebilir: launcher "oyun açık" durumunda takılmasın
+    proc.on('error', e => { ev.log(`[Jestron] Oyun süreci hatası: ${e && e.message ? e.message : e}`); end(-1); });
+    proc.on('close', code => end(code));
+    ev.progress('Oyun başlatıldı', 1);
+    ev.started();
   } catch (e) {
     running = null;
     throw e;

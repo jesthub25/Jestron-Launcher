@@ -23,8 +23,19 @@ contextBridge.exposeInMainWorld('api', {
   repair: () => inv('app:repair'),
   settings: {
     get: () => inv('settings:get'),
-    set: p => inv('settings:set', p),
-    preset: n => inv('settings:preset', n)
+    set: p => inv('settings:set', p)
+  },
+  prof: {
+    create: o => inv('prof:create', o),
+    update: (id, p) => inv('prof:update', id, p),
+    remove: id => inv('prof:delete', id),
+    select: id => inv('prof:select', id),
+    move: (id, d) => inv('prof:move', id, d),
+    preset: (id, n) => inv('prof:preset', id, n),
+    exportCode: id => inv('prof:export', id),
+    preview: c => inv('prof:preview', c),
+    importCode: c => inv('prof:import', c),
+    openDir: id => inv('prof:openDir', id)
   },
   acc: {
     list: () => inv('acc:list'),

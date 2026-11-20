@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { fetchJson, download, pool } = require('./net');
+const store = require('./store');
 
 const ALL = 'https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json';
 
@@ -26,8 +27,9 @@ async function ensureJava(root, component, onProgress) {
   const marker = path.join(dir, '.jestron-ok');
   const bin = javaBin(dir);
 
-  let all;
-  try { all = await fetchJson(ALL); }
+  // Optimizasyon: Java listesi 6 saat önbellekte; her oyun açılışında Mojang'a istek atılmaz
+  let all = store.readCache('java-all', 6 * 60 * 60 * 1000);
+  try { if (!all) { all = await fetchJson(ALL); store.writeCache('java-all', all); } }
   catch (e) {
     if (fs.existsSync(marker) && fs.existsSync(bin)) return bin; // daha önce kurulmuş
     throw new Error('Java indirilemedi: ' + e.message);

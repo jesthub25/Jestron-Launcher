@@ -11,6 +11,7 @@ const jestron = require('./jestron');
 const crash = require('./crash');
 const update = require('./update');
 const { ping } = require('./ping');
+const profilecode = require('./profilecode');
 const config = require('./config');
 
 let win, tray;
@@ -51,14 +52,16 @@ function hideWin() {
 function send(ch, data) { if (win && !win.isDestroyed()) win.webContents.send(ch, data); }
 
 // Optimizasyon: oyun saniyede yüzlerce satır yazabilir; satırlar 120 ms'de bir toplu gönderilir
+// Diziler her satırda değil, sınırı 1000 satır aşınca toplu kırpılır (her satırda splice yavaştı)
+function trim(arr, max) { if (arr.length > max + 1000) arr.splice(0, arr.length - max); }
 function log(line) {
-  const s = String(line);
+  const s = String(line).slice(0, 4000);
   logBuffer.push(s);
-  if (logBuffer.length > 4000) logBuffer.splice(0, logBuffer.length - 4000);
+  trim(logBuffer, 4000);
   sessionLog.push(s);
-  if (sessionLog.length > 3000) sessionLog.splice(0, sessionLog.length - 3000);
+  trim(sessionLog, 3000);
   pendingLogs.push(s);
-  if (pendingLogs.length > 2000) pendingLogs.splice(0, pendingLogs.length - 2000);
+  trim(pendingLogs, 2000);
   if (!flushTimer) {
     flushTimer = setTimeout(() => {
       flushTimer = null;
@@ -69,9 +72,7 @@ function log(line) {
   }
 }
 
-function instanceDir(s = store.getSettings()) {
-  return path.join(s.gameDir, 'instances', `${s.version}-${s.loader}`);
-}
+const instanceDir = (p = store.activeProfile()) => store.instanceDir(p);
 
 function screenshotDirs() {
   const root = path.join(store.getSettings().gameDir, 'instances');
@@ -168,8 +169,8 @@ handle('app:pickDir', async () => {
 });
 handle('app:update', force => update.check(!!force));
 handle('app:repair', () => {
-  const s = store.getSettings();
-  const root = s.gameDir;
+  const s = store.activeProfile();
+  const root = store.getSettings().gameDir;
   const removed = [];
   const rm = p => { try { if (fs.existsSync(p)) { fs.rmSync(p, { recursive: true, force: true }); removed.push(path.relative(root, p)); } } catch {} };
   rm(path.join(root, 'versions', s.version));
@@ -182,10 +183,42 @@ handle('app:repair', () => {
   return removed;
 });
 
-// Ayarlar
+// Ayarlar (genel)
 handle('settings:get', () => store.getSettings());
 handle('settings:set', patch => store.setSettings(patch));
-handle('settings:preset', name => store.setSettings(store.presetPatch(name)));
+
+// Profiller
+handle('prof:create', opts => {
+  const o = opts && typeof opts === 'object' ? opts : {};
+  let data = {};
+  if (o.copyFrom) { const src = store.getProfile(o.copyFrom); data = { ...src, name: src.name + ' (kopya)' }; }
+  const { settings, profile } = store.createProfile({ name: o.name, data, select: !!o.select });
+  // Kopyada tuş atamaları, grafik ayarları ve mod ayarları da gelsin (dünyalar kopyalanmaz)
+  if (o.copyFrom) {
+    try {
+      const from = instanceDir(store.getProfile(o.copyFrom)), to = instanceDir(profile);
+      fs.mkdirSync(to, { recursive: true });
+      for (const f of ['options.txt', 'optionsof.txt', 'servers.dat']) {
+        if (fs.existsSync(path.join(from, f))) fs.copyFileSync(path.join(from, f), path.join(to, f));
+      }
+      if (fs.existsSync(path.join(from, 'config'))) fs.cpSync(path.join(from, 'config'), path.join(to, 'config'), { recursive: true });
+    } catch {}
+  }
+  return { settings, id: profile.id };
+});
+handle('prof:update', (id, patch) => store.updateProfile(id, patch));
+handle('prof:delete', id => store.deleteProfile(id));
+handle('prof:select', id => store.selectProfile(id));
+handle('prof:move', (id, dir) => store.moveProfile(id, dir));
+handle('prof:preset', (id, name) => store.applyPreset(id, name));
+handle('prof:export', id => profilecode.encode(store.getProfile(id)));
+handle('prof:preview', code => profilecode.decode(code));
+handle('prof:import', code => {
+  const r = profilecode.decode(code);
+  const { settings, profile } = store.createProfile({ data: r.profile, select: true });
+  return { settings, id: profile.id, dropped: r.dropped };
+});
+handle('prof:openDir', id => { const d = instanceDir(store.getProfile(id)); fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); });
 
 // Hesaplar
 handle('acc:list', () => store.publicAccounts());
@@ -197,7 +230,7 @@ handle('acc:select', id => auth.select(id));
 // Sürümler, modlar, paketler
 handle('ver:list', showSnap => versions.listVersions(showSnap));
 handle('mods:search', (q, v, type) => mods.searchProjects(q, v, type));
-handle('packs:install', (slug, type) => mods.installPack(instanceDir(), slug, store.getSettings().version, type));
+handle('packs:install', (slug, type) => mods.installPack(instanceDir(), slug, store.activeProfile().version, type));
 handle('packs:list', () => mods.listPacks(instanceDir()));
 handle('packs:remove', async (type, name) => {
   const p = mods.packPath(instanceDir(), type, name);

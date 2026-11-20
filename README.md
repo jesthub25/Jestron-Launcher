@@ -12,13 +12,17 @@ Minecraft: Java Edition için launcher ve oyun içi mod (Jestron). İki parça v
 ## Launcher
 
 - **Minimal Açık tasarım**: koyu mod ve 6 vurgu rengi
+- **Profiller** (Feather tarzı):
+  - Her profilin kendi sürümü, mod yükleyicisi, modları, RAM'i, JVM argümanları, çözünürlüğü, Java yolu, otomatik bağlanılacak sunucusu ve oyun klasörü var.
+  - Profil oluştur, kopyala (tuş atamaları ve mod ayarları da kopyalanır), sırala, sil. Silinen profilin dünyaları silinmez.
+  - **Profil kodu**: `JST1-` ile başlayan tek satırlık kodla profili paylaş, arkadaşın aynı ayarlarla kursun. Kodda dosya yolu, Java yolu ve hesap bilgisi olmaz; komut çalıştırabilecek JVM argümanları içe aktarırken atılır.
 - **Hesaplar**: Microsoft (premium) girişi; token'lar işletim sisteminin anahtarlığıyla şifrelenir. Offline hesap, listede Minecraft sahibi bir Microsoft hesabı varken açılır.
 - **Sunucular**: Gömülü sunucu yok, istediğin kadar sunucu eklersin. Sıralama, favori (ana sayfada görünür), ad düzenleme, canlı ping (oyuncu sayısı, MOTD, ikon) ve tek tıkla bağlanma var. Sunucular istersen oyunun "Çok Oyunculu" listesine de yazılır; oyunda kendi eklediğin sunuculara dokunulmaz.
 - **Modlar**: Fabric kataloğu, Modrinth araması (mod, kaynak paketi, shader), paket yönetimi. Zorunlu bağımlılıklar otomatik kurulur ve SHA1 ile doğrulanır.
 - **Jestron modları** (1.21.4 Fabric):
   - Jestron Client launcher ile birlikte gelir.
   - [Efekt Menüsü](https://github.com/jesthub25/JestronPriv) GitHub release'inden otomatik indirilir ve güncellenir.
-- **Performans ön ayarları**: Düşük PC / Dengeli / Yüksek seçenekleri RAM, Java argümanları ve modları birlikte ayarlar.
+- **Performans ön ayarları** (profil başına): Düşük PC / Dengeli / Yüksek seçenekleri RAM, Java argümanları ve modları birlikte ayarlar.
 - **Galeri**: Oyun içi ekran görüntülerini gösterir; açma, klasörde gösterme ve çöpe atma var.
 - **Çökme analizi**: Oyun çökünce nedenini tahmin eder (bellek, Java sürümü, mod uyumsuzluğu, sürücü, bozuk dosya) ve ne yapman gerektiğini söyler.
 - **Diğer**:
@@ -32,6 +36,8 @@ Minecraft: Java Edition için launcher ve oyun içi mod (Jestron). İki parça v
   - Aynı mod listesi 6 saat boyunca Modrinth'e tekrar sorulmaz.
   - Oyun logları toplu gönderilir.
   - Ping sonuçları önbelleğe alınır.
+  - Mod sürüm bilgileri Modrinth'ten paralel alınır, Java listesi 6 saat önbellekte tutulur.
+  - Açılışta ayarlar, hesaplar ve uygulama bilgisi aynı anda yüklenir.
 
 ## Jestron Client (oyun içi)
 
