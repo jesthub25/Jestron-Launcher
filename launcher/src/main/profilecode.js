@@ -40,7 +40,7 @@ function encode(p) {
   const o = {
     n: p.name, c: p.color, v: p.version, l: p.loader === 'vanilla' ? 'v' : 'f',
     m: MOD_CATALOG.filter(m => !m.required && p.mods && p.mods[m.id]).map(m => m.id),
-    x: (p.extraMods || []).map(m => [m.id, m.name]),
+    x: (p.extraMods || []).filter(m => m.enabled !== false).map(m => [m.id, m.name]),
     j: (p.jestronClient ? 1 : 0) | (p.efektMenu ? 2 : 0),
     r: p.ramMb, p: p.preset, w: p.width, h: p.height, f: p.fullscreen ? 1 : 0
   };

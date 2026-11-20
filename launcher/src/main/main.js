@@ -12,6 +12,8 @@ const crash = require('./crash');
 const update = require('./update');
 const { ping } = require('./ping');
 const profilecode = require('./profilecode');
+const modfiles = require('./modfiles');
+let modSyncing = false; // Modlar sekmesinden 'Şimdi indir' çalışırken oyun başlatılmaz
 const config = require('./config');
 
 let win, tray;
@@ -230,6 +232,48 @@ handle('acc:select', id => auth.select(id));
 // Sürümler, modlar, paketler
 handle('ver:list', showSnap => versions.listVersions(showSnap));
 handle('mods:search', (q, v, type) => mods.searchProjects(q, v, type));
+
+// Yüklü modlar (profilin mods klasörü)
+handle('mods:installed', () => modfiles.list(instanceDir(), store.activeProfile()));
+handle('mods:setFile', (file, enabled) => {
+  if (game.isRunning()) throw new Error('Oyun açıkken mod dosyaları değiştirilemez. Önce oyunu kapat.');
+  return modfiles.setEnabled(instanceDir(), file, !!enabled);
+});
+handle('mods:trash', async file => {
+  if (game.isRunning()) throw new Error('Oyun açıkken mod silinemez. Önce oyunu kapat.');
+  await shell.trashItem(modfiles.filePath(instanceDir(), file));
+  return true;
+});
+handle('mods:addFiles', async paths => {
+  if (game.isRunning()) throw new Error('Oyun açıkken mod eklenemez. Önce oyunu kapat.');
+  let list = Array.isArray(paths) ? paths.filter(p => typeof p === 'string') : null;
+  if (!list || !list.length) {
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Mod dosyası seç (.jar)', properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Fabric modu', extensions: ['jar'] }]
+    });
+    if (r.canceled) return { added: [], rejected: [] };
+    list = r.filePaths;
+  }
+  return modfiles.addFiles(instanceDir(), list);
+});
+handle('mods:sync', async () => {
+  if (game.isRunning()) throw new Error('Oyun açıkken modlar güncellenemez.');
+  if (modSyncing) throw new Error('Modlar zaten indiriliyor.');
+  const p = store.activeProfile();
+  if (p.loader !== 'fabric') throw new Error('Bu profil Vanilla; modlar sadece Fabric ile çalışır.');
+  modSyncing = true;
+  try {
+    const dir = instanceDir(p);
+    const ids = [...config.MOD_CATALOG.filter(m => p.mods[m.id]).map(m => m.id), ...(p.extraMods || []).filter(m => m.enabled !== false).map(m => m.id)];
+    const r = await mods.syncMods(dir, p.version, ids, (stage, pct) => send('mods:progress', { stage, pct }), log);
+    try { await jestron.ensure(dir, p, log); } catch (e) { log(`[Jestron] Jestron modları kurulamadı: ${e.message}`); }
+    return r;
+  } finally {
+    modSyncing = false;
+    send('mods:progress', null);
+  }
+});
 handle('packs:install', (slug, type) => mods.installPack(instanceDir(), slug, store.activeProfile().version, type));
 handle('packs:list', () => mods.listPacks(instanceDir()));
 handle('packs:remove', async (type, name) => {
@@ -269,6 +313,7 @@ handle('game:running', () => game.isRunning());
 handle('game:kill', () => game.kill());
 handle('game:crash', () => lastCrash);
 handle('game:launch', async opts => {
+  if (modSyncing) throw new Error('Modlar indiriliyor, bitince tekrar dene.');
   lastCrash = null;
   sessionLog = [];
   await game.launch(opts || {}, {

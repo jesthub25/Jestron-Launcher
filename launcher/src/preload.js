@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const inv = (ch, ...a) => ipcRenderer.invoke(ch, ...a);
 const on = ch => cb => {
@@ -24,6 +24,16 @@ contextBridge.exposeInMainWorld('api', {
   settings: {
     get: () => inv('settings:get'),
     set: p => inv('settings:set', p)
+  },
+  modfiles: {
+    list: () => inv('mods:installed'),
+    setFile: (f, on) => inv('mods:setFile', f, on),
+    trash: f => inv('mods:trash', f),
+    add: paths => inv('mods:addFiles', paths),
+    sync: () => inv('mods:sync'),
+    onProgress: cb => ipcRenderer.on('mods:progress', (_e, d) => cb(d)),
+    // sürükle-bırak: dosyanın diskteki yolu
+    pathsOf: files => Array.from(files || []).map(f => { try { return webUtils.getPathForFile(f); } catch { return ''; } }).filter(Boolean)
   },
   prof: {
     create: o => inv('prof:create', o),

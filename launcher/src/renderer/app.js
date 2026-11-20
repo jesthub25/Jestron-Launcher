@@ -104,6 +104,7 @@ function go(page) {
   closeProfMenu();
   if (page === 'profiles') renderProfiles();
   if (page === 'servers') renderServers(true);
+  if (page === 'mods' && $('#tab-installed').classList.contains('active')) renderInstalled();
   if (page === 'gallery') loadShots();
   if (page === 'mods') renderPacks();
   if (page === 'console') { const l = $('#log'); l.scrollTop = l.scrollHeight; }
@@ -189,6 +190,7 @@ function afterSettings() {
   renderEditorInfo();
   renderHome();
   if ($('#page-profiles').classList.contains('active')) renderProfiles();
+  if ($('#page-mods').classList.contains('active') && $('#tab-installed').classList.contains('active') && S.instProfile !== p.id) { S.instProfile = p.id; renderInstalled(); }
 }
 function ramFill() {
   const r = $('#set-ram');
@@ -716,7 +718,7 @@ function renderMods() {
   $('#mod-grid').innerHTML = S.info.catalog.filter(m => S.modCat === 'Tümü' || m.cat === S.modCat).map(m => modCard(m, P().mods[m.id])).join('');
   const extra = P().extraMods || [];
   $('#mod-extra').innerHTML = extra.length
-    ? extra.map(m => modCard(m, true, { meta: 'Modrinth', button: `<button class="btn danger small" data-unextra="${esc(m.id)}" type="button">Kaldır</button>` })).join('')
+    ? extra.map(m => modCard(m, m.enabled !== false, { meta: 'Modrinth', button: `<div class="row"><button class="btn ghost small" data-unextra="${esc(m.id)}" type="button">Kaldır</button><span class="switch"><input type="checkbox" data-extra="${esc(m.id)}" ${m.enabled !== false ? 'checked' : ''} aria-label="${esc(m.name)}"><i></i></span></div>` })).join('')
     : '<div class="empty">Modrinth aramasından eklediğin modlar burada görünür.</div>';
   renderJestron();
 }
@@ -755,6 +757,7 @@ $$('[data-tab]').forEach(t => t.addEventListener('click', () => {
   $$('[data-tab]').forEach(x => x.classList.toggle('active', x === t));
   $$('.tabpane').forEach(x => x.classList.toggle('active', x.id === 'tab-' + t.dataset.tab));
   if (t.dataset.tab === 'packs') renderPacks();
+  if (t.dataset.tab === 'installed') renderInstalled();
 }));
 $('#search-type').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -796,6 +799,12 @@ $('#mod-results').addEventListener('click', async e => {
   b.textContent = 'İndiriliyor…';
   try { const f = await call(window.api.packs.install(h.id, h.type)); b.textContent = 'İndirildi'; toast(`${f} indirildi`, 'ok'); renderPacks(); }
   catch { b.disabled = false; b.textContent = 'İndir'; }
+});
+$('#mod-extra').addEventListener('change', async e => {
+  const id = e.target.dataset.extra; if (!id) return;
+  const on = e.target.checked;
+  await saveProfile({ extraMods: (P().extraMods || []).map(m => (m.id === id ? { ...m, enabled: on } : m)) });
+  renderMods();
 });
 $('#mod-extra').addEventListener('click', async e => {
   const b = e.target.closest('[data-unextra]'); if (!b) return;
@@ -1074,3 +1083,121 @@ setTimeout(hideSplash, 8000); // ne olursa olsun takılı kalmasın
   if (S.settings.checkUpdates) checkUpdate(false);
   window.api.efekt(false).then(r => { if (r && r.ok) { S.efekt = r.data; renderJestron(); } });
 })();
+
+
+// ---------- yüklü modlar (mods klasörü) ----------
+const fmtSize = b => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+let instSeq = 0;
+async function renderInstalled() {
+  const box = $('#mod-installed');
+  const seq = ++instSeq;
+  let list;
+  try { list = await call(window.api.modfiles.list(), true); }
+  catch { if (seq === instSeq) box.innerHTML = '<div class="empty">Mod klasörü okunamadı.</div>'; return; }
+  if (seq !== instSeq) return;
+  S.installed = list;
+  const on = list.filter(m => m.enabled).length;
+  const own = list.filter(m => m.source === 'manual').length;
+  $('#inst-sum').textContent = list.length ? `${P().name}: ${list.length} mod · ${on} açık · ${own} kendi eklediğin` : `${P().name}: mods klasörü boş`;
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">Henüz yüklü mod yok. "Modları şimdi indir" ile katalogdan seçtiklerini indir ya da kendi .jar dosyanı ekle.</div>`;
+    return;
+  }
+  const srcName = { manual: 'Kendi eklediğin', launcher: 'Launcher', jestron: 'Jestron' };
+  box.innerHTML = list.map((m, i) => {
+    const c = m.control || {};
+    let hint = `${esc(m.file)} · ${fmtSize(m.size)}`;
+    let lock = false;
+    if (!m.fabric && m.source === 'manual') hint = `<span class="warn">${m.loader === 'forge' ? 'Forge/NeoForge modu' : 'Fabric modu değil'}: oyunda yüklenmez</span> · ${esc(m.file)}`;
+    if (c.type === 'dep') { lock = true; hint = `${esc(c.owner)} için gerekli · ${hint}`; }
+    if (c.required) { lock = true; hint = `Zorunlu · ${hint}`; }
+    if (c.type === 'launcher') { lock = true; hint = `Katalogdan yönetilir · ${hint}`; }
+    if (c.type === 'jestron' && P().version !== S.info.jestronMc) hint = `Sadece ${esc(S.info.jestronMc)} · ${hint}`;
+    if (['catalog', 'extra', 'jestron'].includes(c.type) && !m.enabled) hint = `Kapalı: oyun açılınca kaldırılır · ${hint}`;
+    const ico = m.icon ? `<img src="${esc(m.icon)}" alt="">` : esc((m.name || '?')[0].toUpperCase());
+    return `<div class="irow ${m.enabled ? '' : 'off'}" data-i="${i}">
+      <div class="mod-ico">${ico}</div>
+      <div class="ib"><div><b>${esc(m.name)}</b>${m.version ? `<span class="v">${esc(m.version)}</span>` : ''}</div><div class="sub">${hint}</div></div>
+      <span class="src ${m.source}">${srcName[m.source] || ''}</span>
+      <span class="switch"><input type="checkbox" data-inst="${i}" ${m.enabled ? 'checked' : ''} ${lock ? 'disabled' : ''} aria-label="${esc(m.name)}"><i></i></span>
+      ${m.source === 'manual' ? `<button class="icon-btn" data-itrash="${i}" title="Çöpe at" aria-label="Çöpe at" type="button">${icon.trash}</button>` : ''}
+    </div>`;
+  }).join('');
+}
+$('#mod-installed').addEventListener('change', async e => {
+  const i = e.target.dataset.inst; if (i === undefined) return;
+  const m = (S.installed || [])[Number(i)]; if (!m) return;
+  const on = e.target.checked, c = m.control || {};
+  e.target.disabled = true;
+  try {
+    if (c.type === 'file') {
+      await call(window.api.modfiles.setFile(m.file, on));
+      toast(`${m.name} ${on ? 'açıldı' : 'kapatıldı'}`, 'ok');
+    } else if (c.type === 'catalog') {
+      await saveProfile({ mods: { [c.id]: on }, preset: 'custom' }); renderMods();
+      toast(`${m.name} ${on ? 'açıldı' : 'kapatıldı'} · oyun açılınca uygulanır`, 'ok');
+    } else if (c.type === 'extra') {
+      await saveProfile({ extraMods: (P().extraMods || []).map(x => (x.id === c.id ? { ...x, enabled: on } : x)) }); renderMods();
+      toast(`${m.name} ${on ? 'açıldı' : 'kapatıldı'} · oyun açılınca uygulanır`, 'ok');
+    } else if (c.type === 'jestron') {
+      await saveProfile({ [c.id]: on }); renderMods();
+      toast(`${m.name} ${on ? 'açıldı' : 'kapatıldı'} · oyun açılınca uygulanır`, 'ok');
+    }
+  } catch {}
+  renderInstalled();
+});
+$('#mod-installed').addEventListener('click', e => {
+  const b = e.target.closest('[data-itrash]'); if (!b) return;
+  const m = (S.installed || [])[Number(b.dataset.itrash)]; if (!m) return;
+  modal({
+    title: `${m.name} silinsin mi?`,
+    body: `<p><span class="mono">${esc(m.file)}</span> geri dönüşüm kutusuna taşınır.</p>`,
+    actions: [{ label: 'Vazgeç' }, { label: 'Sil', cls: 'danger', onClick: async () => { try { await call(window.api.modfiles.trash(m.file)); toast(`${m.name} silindi`, 'ok'); } catch {} renderInstalled(); } }]
+  });
+});
+async function addModFiles(paths) {
+  try {
+    const r = await call(window.api.modfiles.add(paths));
+    if (r.added.length) toast(`Eklendi: ${r.added.slice(0, 3).join(', ')}${r.added.length > 3 ? ` ve ${r.added.length - 3} mod daha` : ''}`, 'ok');
+    for (const x of r.rejected.slice(0, 3)) toast('Eklenmedi: ' + x, 'err');
+    if (P().loader !== 'fabric' && r.added.length) toast('Bu profil Vanilla: modların çalışması için profili Fabric yap.', 'err');
+  } catch {}
+  renderInstalled();
+}
+$('#mods-add').addEventListener('click', () => addModFiles(null));
+$('#mods-sync').addEventListener('click', async e => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  try {
+    const r = await call(window.api.modfiles.sync());
+    if (r.offline) toast("Modrinth'e ulaşılamadı; mevcut modlar korundu.", 'err');
+    else toast(`Modlar hazır: ${r.installed} dosya`, 'ok');
+    if (r.skipped && r.skipped.length) toast(`Bu sürüm için bulunamadı: ${r.skipped.slice(0, 4).join(', ')}`, 'err');
+  } catch {}
+  b.disabled = false;
+  renderInstalled();
+});
+window.api.modfiles.onProgress(d => {
+  $('#inst-prog').classList.toggle('hidden', !d);
+  if (!d) return;
+  $('#inst-prog-t').textContent = d.stage;
+  $('#inst-prog-f').style.width = Math.round((d.pct || 0) * 100) + '%';
+});
+// Sürükle-bırak: jar dosyaları Modlar sayfasına bırakılınca eklenir; başka yere bırakılan dosya pencereyi değiştirmez
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  const onMods = $('#page-mods').classList.contains('active');
+  e.dataTransfer.dropEffect = onMods ? 'copy' : 'none';
+  $('#page-mods').classList.toggle('dragging', onMods);
+});
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) $('#page-mods').classList.remove('dragging'); });
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  $('#page-mods').classList.remove('dragging');
+  if (!$('#page-mods').classList.contains('active')) return;
+  const paths = window.api.modfiles.pathsOf(e.dataTransfer.files);
+  if (!paths.length) return;
+  $$('[data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'installed'));
+  $$('.tabpane').forEach(x => x.classList.toggle('active', x.id === 'tab-installed'));
+  addModFiles(paths);
+});

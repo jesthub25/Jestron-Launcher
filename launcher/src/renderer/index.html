@@ -147,14 +147,27 @@
         <header class="page-head"><div><h2>Modlar</h2><p id="mods-sub">Fabric modları oyun başlarken otomatik kurulur.</p></div>
           <button class="btn ghost" id="mods-folder" type="button">Mod klasörü</button></header>
         <div class="tabs" role="tablist">
-          <button class="tab active" data-tab="catalog" type="button">Katalog</button>
+          <button class="tab active" data-tab="installed" type="button">Yüklü</button>
+          <button class="tab" data-tab="catalog" type="button">Katalog</button>
           <button class="tab" data-tab="jestron" type="button">Jestron</button>
           <button class="tab" data-tab="search" type="button">Modrinth'te ara</button>
           <button class="tab" data-tab="packs" type="button">Paketlerim</button>
           <button class="tab" data-tab="extra" type="button">Eklediklerim</button>
         </div>
         <div id="mods-vanilla-warn" class="notice hidden">Bu profilde Vanilla seçili; modlar sadece Fabric ile çalışır. <a href="#" data-editprof>Profil ayarlarından</a> Fabric'e geç.</div>
-        <div class="tabpane active" id="tab-catalog">
+        <div class="tabpane active" id="tab-installed">
+          <div class="inst-bar">
+            <span class="muted" id="inst-sum">—</span>
+            <div class="row">
+              <button class="btn ghost small" id="mods-sync" type="button">Modları şimdi indir</button>
+              <button class="btn primary small" id="mods-add" type="button">Dosyadan mod ekle</button>
+            </div>
+          </div>
+          <div class="inst-prog hidden" id="inst-prog"><span id="inst-prog-t">—</span><div class="prog-bar"><i id="inst-prog-f"></i></div></div>
+          <div class="list" id="mod-installed"></div>
+          <div class="dropzone" id="mod-drop">Fabric mod dosyalarını (.jar) buraya sürükle-bırak · Katalog ve Modrinth modları oyun açılırken ya da "Modları şimdi indir" ile iner</div>
+        </div>
+        <div class="tabpane" id="tab-catalog">
           <div class="chips" id="mod-cats"></div>
           <div class="grid" id="mod-grid"></div>
         </div>

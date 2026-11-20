@@ -57,7 +57,8 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
   };
   await pool([...new Set(projects)], 6, async pr => { try { await fetchVer(pr, null); } catch {} });
 
-  async function resolve(project, versionId, parentName) {
+  async function resolve(project, versionId, parentName, root) {
+    const rootOf = root || project; // launcher'da hangi ayarın bu dosyayı getirdiği (katalog / eklenen mod)
     if (!versionId && seen.has(project)) return;
     seen.add(project);
     let v;
@@ -77,10 +78,10 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
     seen.add(v.project_id);
     const f = (v.files || []).find(x => x.primary) || (v.files || [])[0];
     if (!f || !safeName(f.filename)) { skipped.push(project); return; }
-    resolved.set(v.project_id, { versionId: v.id, url: f.url, filename: f.filename, sha1: f.hashes && f.hashes.sha1 });
+    resolved.set(v.project_id, { versionId: v.id, url: f.url, filename: f.filename, sha1: f.hashes && f.hashes.sha1, root: rootOf, dep: !!parentName });
     for (const d of v.dependencies || []) {
       if (d.dependency_type !== 'required' || !d.project_id) continue;
-      await resolve(d.project_id, d.version_id || null, project);
+      await resolve(d.project_id, d.version_id || null, project, rootOf);
     }
   }
 
@@ -96,6 +97,14 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
     return { installed: (man.files || []).length, skipped: [], offline: true };
   }
 
+  // Önce bağımlılık olarak gelen ama kullanıcının kendisinin de istediği mod: sahibi kendisi olsun
+  for (const pr of new Set(projects)) {
+    try {
+      const v = await pending.get('p:' + pr);
+      const r = v && resolved.get(v.project_id);
+      if (r) { r.root = pr; r.dep = false; }
+    } catch {}
+  }
   const wanted = [...resolved.values()];
   const wantedNames = new Set(wanted.map(w => w.filename));
 
@@ -117,7 +126,7 @@ async function syncMods(instanceDir, game, projects, onProgress, log) {
 
   fs.writeFileSync(manPath, JSON.stringify({
     game, key, at: Date.now(), files: [...wantedNames], skipped,
-    resolved: wanted.map(w => ({ url: w.url, filename: w.filename, sha1: w.sha1 }))
+    resolved: wanted.map(w => ({ url: w.url, filename: w.filename, sha1: w.sha1, root: w.root, dep: w.dep }))
   }, null, 2));
   return { installed: wanted.length, skipped };
 }

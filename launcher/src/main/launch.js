@@ -69,7 +69,7 @@ async function launch(opts, evIn) {
     if (s.loader === 'fabric') {
       const ids = [
         ...MOD_CATALOG.filter(m => s.mods[m.id]).map(m => m.id),
-        ...(s.extraMods || []).map(m => m.id)
+        ...(s.extraMods || []).filter(m => m.enabled !== false).map(m => m.id)
       ];
       const r = await syncMods(instanceDir, s.version, ids,
         (stage, p) => ev.progress(stage, 0.25 + 0.15 * p), ev.log);

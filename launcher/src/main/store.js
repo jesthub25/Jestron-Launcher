@@ -100,7 +100,7 @@ function cleanExtraMods(list) {
     if (!m || typeof m.id !== 'string' || !/^[a-z0-9_\-]{1,64}$/i.test(m.id) || seen.has(m.id)) continue;
     seen.add(m.id);
     const icon = typeof m.icon === 'string' && /^https:\/\/[^\s"'<>]{1,500}$/.test(m.icon) ? m.icon : '';
-    out.push({ id: m.id, name: cleanText(m.name, 64) || m.id, desc: cleanText(m.desc, 200), icon });
+    out.push({ id: m.id, name: cleanText(m.name, 64) || m.id, desc: cleanText(m.desc, 200), icon, enabled: m.enabled !== false });
     if (out.length >= 200) break;
   }
   return out;
