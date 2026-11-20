@@ -567,40 +567,188 @@ function setPlayState() {
   b.querySelector('span').textContent = S.running ? 'Oyunda' : S.launching ? 'Başlatılıyor…' : 'Oyna';
   $$('[data-act="join"], #home-join').forEach(x => (x.disabled = busy));
 }
+// ---------- yükleme ekranı ----------
+const LAUNCH_STEPS = [
+  { at: 0, name: 'Hesap doğrulanıyor' },
+  { at: 0.05, name: 'Sürüm ve Fabric' },
+  { at: 0.1, name: 'Java' },
+  { at: 0.25, name: 'Modlar' },
+  { at: 0.4, name: 'Oyun dosyaları' },
+  { at: 0.98, name: 'Oyun açılıyor' }
+];
+const TIPS = [
+  'Oyunda Sağ Shift ile Jestron menüsünü açarsın.',
+  'Menü tasarımını Jestron menüsü › Görünüm › Menü tasarımı ile değiştirebilirsin.',
+  'HUD öğelerini menüdeki "HUD Düzenle" ile sürükleyip istediğin yere taşı.',
+  'Oyunda F2 ile aldığın ekran görüntüleri Galeri sayfasında görünür.',
+  'Sunucular sayfasına istediğin kadar sunucu ekleyebilir, birini favori yapabilirsin.',
+  'Oyun çökerse Konsol sayfası nedenini ve çözümünü gösterir.',
+  'Ayarlar › Performans bölümünden RAM miktarını ve ön ayarları seçebilirsin.',
+  'İlk açılışta dosyalar indirilir; sonraki açılışlar çok daha hızlı olur.'
+];
+const tickSvg = '<svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.6l4.6-5"/></svg>';
+const crossSvg = '<svg viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5"/></svg>';
+const L = { open: false, pct: 0, tipI: 0, tipTimer: null, hideTimer: null, state: 'idle' };
+
+function renderSteps() {
+  const box = $('#ln-steps');
+  if (!box.children.length) {
+    box.innerHTML = LAUNCH_STEPS.map(st => `<li><span class="ic">${tickSvg}</span><span>${esc(st.name)}</span></li>`).join('');
+  }
+  let cur = 0;
+  LAUNCH_STEPS.forEach((st, i) => { if (L.pct >= st.at) cur = i; });
+  [...box.children].forEach((li, i) => {
+    const done = L.state === 'done' || i < cur;
+    const bad = L.state === 'failed' && i === cur;
+    li.className = bad ? 'bad' : done ? 'ok' : (i === cur && L.state === 'busy') ? 'now' : '';
+    li.querySelector('.ic').innerHTML = bad ? crossSvg : tickSvg;
+  });
+}
+function setTip(i) {
+  const el = $('#ln-tip');
+  el.classList.add('fade');
+  setTimeout(() => { el.textContent = TIPS[i % TIPS.length]; el.classList.remove('fade'); }, 250);
+}
+function showLaunch(show) {
+  L.open = show;
+  const el = $('#launch');
+  if (show) {
+    el.classList.remove('hidden', 'closing');
+    $('#progress').classList.add('hidden');
+  } else if (!el.classList.contains('hidden')) {
+    el.classList.add('closing');
+    setTimeout(() => { if (!L.open) el.classList.add('hidden'); }, 220);
+  }
+}
+function setLaunchProgress(stage, pct) {
+  L.pct = Math.max(L.pct, Math.max(0, Math.min(1, pct)));
+  const p = Math.round(L.pct * 100);
+  $('#ln-stage').textContent = stage;
+  $('#ln-pct').textContent = p;
+  $('#ln-fill').style.width = p + '%';
+  $('#prog-stage').textContent = stage;
+  $('#prog-pct').textContent = p + '%';
+  $('#prog-fill').style.width = p + '%';
+  renderSteps();
+}
+function endLaunch(delay) {
+  clearInterval(L.tipTimer); L.tipTimer = null;
+  clearTimeout(L.hideTimer);
+  L.hideTimer = setTimeout(() => { showLaunch(false); $('#progress').classList.add('hidden'); L.state = 'idle'; }, delay);
+}
+function startLaunch(server) {
+  const s = S.settings || {};
+  const acc = selectedAcc();
+  clearTimeout(L.hideTimer);
+  L.pct = 0; L.state = 'busy';
+  const el = $('#launch');
+  el.classList.remove('done', 'failed');
+  $('#ln-kicker').textContent = 'Oyun hazırlanıyor';
+  $('#ln-title').textContent = `${s.loader === 'fabric' ? 'Fabric' : 'Minecraft'} ${s.version || ''}`.trim();
+  $('#ln-acc').textContent = acc ? acc.name : '—';
+  setAvatar($('#ln-avatar'), acc);
+  $('#ln-target').textContent = server ? `${server.name || server.host}${server.port && server.port !== 25565 ? ':' + server.port : ''}` : 'Ana menü';
+  $('#ln-bg').textContent = 'Arka planda devam et';
+  const mc = activeModCount();
+  const presetName = { low: 'Düşük PC', balanced: 'Dengeli', high: 'Yüksek' }[s.preset] || 'Özel';
+  const chips = [
+    [s.loader === 'fabric' ? mc.n : '', s.loader === 'fabric' ? 'mod' : 'Vanilla'],
+    [((s.ramMb || 0) / 1024).toFixed(1).replace('.0', ''), 'GB RAM'],
+    [s.fullscreen ? 'Tam ekran' : `${s.width}×${s.height}`, ''],
+    [presetName, 'ön ayar']
+  ];
+  $('#ln-chips').innerHTML = chips.map(([b, t]) => `<span>${b !== '' ? `<b>${esc(b)}</b>` : ''}${esc(t)}</span>`).join('');
+  setLaunchProgress('Hazırlanıyor', 0);
+  L.tipI = Math.floor(Math.random() * TIPS.length);
+  $('#ln-tip').textContent = TIPS[L.tipI];
+  clearInterval(L.tipTimer);
+  L.tipTimer = setInterval(() => setTip(++L.tipI), 6000);
+  showLaunch(true);
+}
+function finishLaunch(ok, msg) {
+  if (L.state !== 'busy') return;
+  L.state = ok ? 'done' : 'failed';
+  const el = $('#launch');
+  el.classList.toggle('done', ok);
+  el.classList.toggle('failed', !ok);
+  if (ok) {
+    setLaunchProgress('Oyun penceresi açılıyor', 1);
+    $('#ln-kicker').textContent = 'Oyun açıldı';
+    $('#ln-bg').textContent = 'Kapat';
+    endLaunch(1600);
+  } else {
+    $('#ln-kicker').textContent = 'Başlatılamadı';
+    $('#ln-stage').textContent = msg || 'Hata';
+    $('#prog-stage').textContent = msg || 'Hata';
+    $('#ln-bg').textContent = 'Kapat';
+    renderSteps();
+    endLaunch(5000);
+  }
+}
+$('#ln-bg').addEventListener('click', () => {
+  if (L.state === 'busy') { showLaunch(false); $('#progress').classList.remove('hidden'); }
+  else endLaunch(0);
+});
+$('#progress').addEventListener('click', () => { if (L.state === 'busy') showLaunch(true); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && L.open && L.state === 'busy') { showLaunch(false); $('#progress').classList.remove('hidden'); } });
+
 async function play(server) {
   if (S.launching || S.running) return;
   if (!selectedAcc()) { toast('Önce bir hesap ekle.', 'err'); return go('accounts'); }
   S.launching = true; setPlayState(); showCrash(null);
-  $('#prog-stage').textContent = 'Hazırlanıyor'; $('#prog-pct').textContent = '0%'; $('#prog-fill').style.width = '0%';
-  $('#progress').classList.remove('hidden');
+  const named = server && (S.settings.servers || []).find(x => x.host === server.host && x.port === server.port);
+  startLaunch(server ? { ...server, name: named ? named.name : '' } : null);
   try { await call(window.api.game.launch(server ? { server } : {})); }
-  catch { $('#progress').classList.add('hidden'); }
+  catch (e) { finishLaunch(false, e.message); }
   finally { S.launching = false; setPlayState(); }
 }
-window.api.game.onProgress(({ stage, pct }) => {
-  $('#prog-stage').textContent = stage;
-  const p = Math.round(Math.max(0, Math.min(1, pct)) * 100);
-  $('#prog-pct').textContent = p + '%';
-  $('#prog-fill').style.width = p + '%';
-});
+window.api.game.onProgress(({ stage, pct }) => { if (L.state === 'busy') setLaunchProgress(stage, pct); });
 window.api.game.onLogs(addLogs);
 window.api.game.onState(async st => {
   S.running = st === 'running'; setPlayState();
-  if (st === 'running') setTimeout(() => $('#progress').classList.add('hidden'), 1200);
+  if (st === 'running') finishLaunch(true);
   if (st === 'closed') {
-    $('#progress').classList.add('hidden');
+    if (L.state === 'busy') finishLaunch(false, 'Oyun kapandı');
     try { S.settings = await call(window.api.settings.get(), true); renderHome(); } catch {}
   }
 });
 window.api.game.onCrash(c => { showCrash(c); toast(`${c.title}. Ayrıntı Konsol'da.`, 'err'); go('console'); });
 
 // ---------- başlangıç ----------
+const SPLASH_T0 = performance.now();
+function splashStep(text, pct) {
+  const st = $('#sp-status'), f = $('#sp-fill');
+  if (st) st.textContent = text;
+  if (f) f.style.width = Math.round(pct * 100) + '%';
+}
+let splashGone = false;
+function hideSplash() {
+  if (splashGone) return;
+  splashGone = true;
+  const wait = Math.max(0, 900 - (performance.now() - SPLASH_T0));
+  setTimeout(() => {
+    splashStep('Hazır', 1);
+    setTimeout(() => {
+      const sp = $('#splash');
+      if (!sp) return;
+      sp.classList.add('out');
+      setTimeout(() => sp.remove(), 400);
+    }, 200);
+  }, wait);
+}
+setTimeout(hideSplash, 8000); // ne olursa olsun takılı kalmasın
+
 (async function init() {
   try {
+    splashStep('Başlatılıyor', 0.15);
     S.info = await call(window.api.info());
+    $('#sp-ver').textContent = `${S.info.name} ${S.info.version}`;
+    splashStep('Ayarlar yükleniyor', 0.4);
     S.settings = await call(window.api.settings.get());
+    splashStep('Hesaplar yükleniyor', 0.65);
     S.accounts = await call(window.api.acc.list());
-  } catch (e) { toast('Başlatma hatası: ' + e.message, 'err'); return; }
+    splashStep('Arayüz hazırlanıyor', 0.85);
+  } catch (e) { hideSplash(); toast('Başlatma hatası: ' + e.message, 'err'); return; }
   bindSettings();
   renderAccounts();
   renderMods();
@@ -611,6 +759,7 @@ window.api.game.onCrash(c => { showCrash(c); toast(`${c.title}. Ayrıntı Konsol
   try { S.running = await call(window.api.game.running(), true); } catch {}
   try { showCrash(await call(window.api.game.lastCrash(), true)); } catch {}
   setPlayState();
+  hideSplash();
   if (S.settings.checkUpdates) checkUpdate(false);
   window.api.efekt(false).then(r => { if (r && r.ok) { S.efekt = r.data; renderJestron(); } });
 })();

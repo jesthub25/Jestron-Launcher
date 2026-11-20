@@ -16,6 +16,16 @@
     </div>
   </header>
 
+  <div id="splash" role="status" aria-label="Yükleniyor">
+    <div class="sp-center">
+      <div class="sp-mark"><img src="assets/icon.png" alt=""></div>
+      <div class="sp-word">jestron<span class="dot">.</span></div>
+      <div class="sp-bar"><i id="sp-fill"></i></div>
+      <div class="sp-status" id="sp-status">Başlatılıyor</div>
+    </div>
+    <div class="sp-ver" id="sp-ver">Jestron Launcher</div>
+  </div>
+
   <div id="app">
     <aside id="sidebar">
       <div class="logo">jestron<span class="dot">.</span></div>
@@ -190,10 +200,37 @@
         </div>
       </section>
 
-      <div id="progress" class="hidden">
+      <section id="launch" class="hidden" aria-live="polite">
+        <div class="ln-main">
+          <div class="ln-head">
+            <span class="ln-kicker"><i class="ln-pulse"></i><span id="ln-kicker">Oyun hazırlanıyor</span></span>
+            <h2 id="ln-title">Minecraft</h2>
+            <div class="ln-meta">
+              <span class="avatar sm" id="ln-avatar"><img alt=""><span class="initial"></span></span>
+              <span id="ln-acc">—</span><span class="sep">·</span><span id="ln-target">Tek oyuncu / sunucu listesi</span>
+            </div>
+          </div>
+          <div class="ln-progress">
+            <div class="ln-pct"><b id="ln-pct">0</b><span>%</span></div>
+            <div class="ln-stage" id="ln-stage">Hazırlanıyor</div>
+            <div class="ln-bar"><i id="ln-fill"></i></div>
+          </div>
+          <ol class="ln-steps" id="ln-steps"></ol>
+          <div class="ln-chips" id="ln-chips"></div>
+          <div class="ln-foot">
+            <p class="ln-tip"><b>İpucu</b><span id="ln-tip"></span></p>
+            <button class="btn ghost small" id="ln-bg" type="button">Arka planda devam et</button>
+          </div>
+        </div>
+        <div class="ln-art" aria-hidden="true">
+          <div class="ln-art-word">jestron<span class="dot">.</span></div>
+        </div>
+      </section>
+
+      <button id="progress" class="hidden" type="button" title="Yükleme ekranını aç">
         <div class="prog-text"><span id="prog-stage">Hazırlanıyor</span><b id="prog-pct">0%</b></div>
         <div class="prog-bar"><i id="prog-fill"></i></div>
-      </div>
+      </button>
     </main>
   </div>
   <div id="toasts" aria-live="polite"></div>

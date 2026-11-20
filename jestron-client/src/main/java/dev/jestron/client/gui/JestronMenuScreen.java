@@ -135,13 +135,13 @@ public final class JestronMenuScreen extends Screen {
         }
         cw = px + pw - PAD - cx;
         ch = Math.max(40, bottom - cy);
-        listW = st.split() ? Math.max(110, (int) (cw * 0.46)) : cw;
+        listW = st.split() ? Math.max(110, (int) (cw * 0.42)) : cw;
         setX = cx + listW + 8;
         setW = cx + cw - setX;
     }
 
     private int navW() {
-        return pw < 380 ? 72 : 84;
+        return pw < 380 ? 86 : 94;
     }
 
     private void buildTextBoxes() {
