@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.jestron.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ChatComponentMixin",
+    "GuiMixin",
+    "LivingEntityRendererMixin",
+    "MouseHandlerMixin",
+    "OptionInstanceAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

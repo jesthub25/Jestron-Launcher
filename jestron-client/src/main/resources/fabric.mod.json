@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "jestron",
+  "version": "${version}",
+  "name": "Jestron Client",
+  "description": "Jestron Launcher oyun içi menüsü (Sağ Shift): sürükle-bırak HUD (FPS, CPS, tuşlar, koordinat, zırh, ping, saat, hız, bellek, sunucu, oturum), hedef ve isim üstü can göstergesi, aç/kapa koşma ve eğilme, tam parlaklık, otomatik GG, giriş mesajı, sohbet makroları, sohbet saati, düşük dayanıklılık uyarısı ve Efekt Menüsü kısayolu.",
+  "authors": ["Jestron"],
+  "license": "All-Rights-Reserved",
+  "icon": "assets/jestron/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.jestron.client.JestronClient"]
+  },
+  "mixins": ["jestron.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "jestronpriv": "*"
+  }
+}

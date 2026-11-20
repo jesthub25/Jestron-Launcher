@@ -1,0 +1,16 @@
+# Gradle / Loom
+jestron-client/.gradle/
+jestron-client/build/
+jestron-client/run/
+jestron-client/out/
+*.iml
+.idea/
+
+# Node / Electron
+launcher/node_modules/
+launcher/dist/
+launcher/resources/mods/*.jar
+
+# işletim sistemi
+.DS_Store
+Thumbs.db
