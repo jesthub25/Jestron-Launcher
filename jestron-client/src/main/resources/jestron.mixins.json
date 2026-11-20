@@ -10,7 +10,8 @@
     "MouseHandlerMixin",
     "OptionInstanceAccessor",
     "MinecraftMixin",
-    "PauseScreenAccessor"
+    "PauseScreenAccessor",
+    "MinecraftTitleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

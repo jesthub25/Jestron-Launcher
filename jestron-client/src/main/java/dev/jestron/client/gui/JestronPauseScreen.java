@@ -319,7 +319,7 @@ public final class JestronPauseScreen extends Screen {
     }
 
     private void drawCard(GuiGraphics g, int mx, int my) {
-        int w = Math.min(width - 20, 200), bh = 18, gap = 3;
+        int w = Math.min(width - 20, 224), bh = 18, gap = 3;
         int body = stack(g, 0, 0, w - 20, 2, bh, gap, Mode.CENTER, mx, my, false);
         int h = 40 + body + 12;
         int x = (width - w) / 2, y = Math.max(6, (height - h) / 2);
@@ -391,9 +391,6 @@ public final class JestronPauseScreen extends Screen {
             button(g, items.get(i), bx, yy, bw, bh, Mode.ROW, mx, my);
             py += bh + 2;
         }
-        // sol üstte küçük başlık
-        logo(g, 12, 12, 0xFFFFFFFF);
-        g.drawString(font, "Oyun duraklatıldı", 12, 25, 0xFFD4D4D8, true);
     }
 
     private void drawDock(GuiGraphics g, int mx, int my) {
@@ -495,35 +492,19 @@ public final class JestronPauseScreen extends Screen {
     }
 
     private void drawTopBar(GuiGraphics g, int mx, int my) {
-        int bh = 26;
+        int bh = 36;
         g.fill(0, 0, width, bh, st.panel());
         g.fill(0, bh, width, bh + 1, st.border());
         int n = items.size();
-        // genişlik yetmezse sadece simge
-        int[] ws = new int[n];
-        int total = 0;
+        int logoW = boldW("jestron") + 16;
+        int iw = Math.min(54, (width - 12) / n - 2);
+        int total = n * (iw + 2) - 2;
+        boolean showLogo = total + 2 * logoW + 10 < width;
+        if (showLogo) logo(g, 10, 14, st.text());
+        int x = (width - total) / 2;
         for (int i = 0; i < n; i++) {
-            ws[i] = font.width(items.get(i).icon()) + 5 + font.width(items.get(i).shortLabel()) + 14;
-            total += ws[i] + 2;
-        }
-        int logoW = boldW("jestron") + 14;
-        boolean showLogo = total + logoW + 10 < width;
-        boolean iconsOnly = total + 10 > width;
-        if (iconsOnly) {
-            total = 0;
-            for (int i = 0; i < n; i++) {
-                ws[i] = Math.max(20, (width - 10) / n - 2);
-                total += ws[i] + 2;
-            }
-        }
-        if (showLogo) logo(g, 10, 9, st.text());
-        int x = showLogo ? Math.max(logoW, (width - total) / 2) : (width - total) / 2;
-        for (int i = 0; i < n; i++) {
-            Item it = items.get(i);
-            Item shown = iconsOnly ? new Item(it.id(), it.icon(), it.icon(), "", it.action(), it.danger())
-                    : new Item(it.id(), it.shortLabel(), it.shortLabel(), it.icon(), it.action(), it.danger());
-            button(g, shown, x, 4, ws[i], bh - 8, Mode.CENTER, mx, my);
-            x += ws[i] + 2;
+            button(g, items.get(i), x, 3, iw, bh - 6, Mode.ICON, mx, my);
+            x += iw + 2;
         }
         // ortada bilgi kartı
         String title = "Oyun duraklatıldı";

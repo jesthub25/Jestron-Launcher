@@ -49,6 +49,7 @@ public final class JestronClient implements ClientModInitializer {
         // seçenekler (options) bu noktada hazır olduğu için açık modüller burada başlatılır
         ClientLifecycleEvents.CLIENT_STARTED.register(mc -> {
             for (Module m : Modules.ALL) m.applyLoadedState();
+            dev.jestron.client.util.WindowBranding.applyIcon(mc);
             SelfTest.maybeStart();
         });
         ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> {
