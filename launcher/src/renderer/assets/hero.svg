@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0d14"/>
+      <stop offset="0.45" stop-color="#2a1626"/>
+      <stop offset="0.75" stop-color="#7a2e2a"/>
+      <stop offset="1" stop-color="#d9662f"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.72" cy="0.78" r="0.35">
+      <stop offset="0" stop-color="#ffcf7a" stop-opacity="0.95"/>
+      <stop offset="0.25" stop-color="#ff8a3d" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff6a3d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="600" fill="url(#sky)"/>
+  <rect width="1600" height="600" fill="url(#sun)"/>
+  <!-- yıldızlar -->
+  <g fill="#ffe9c9" opacity="0.7">
+    <rect x="120" y="60" width="4" height="4"/><rect x="310" y="120" width="3" height="3"/><rect x="520" y="40" width="4" height="4"/>
+    <rect x="760" y="90" width="3" height="3"/><rect x="980" y="50" width="4" height="4"/><rect x="1210" y="110" width="3" height="3"/>
+    <rect x="1420" y="70" width="4" height="4"/><rect x="1530" y="150" width="3" height="3"/><rect x="60" y="180" width="3" height="3"/>
+    <rect x="650" y="160" width="3" height="3"/><rect x="880" y="190" width="3" height="3"/><rect x="1330" y="30" width="3" height="3"/>
+  </g>
+  <!-- güneş (blok) -->
+  <rect x="1088" y="372" width="128" height="128" fill="#ffd38a" opacity="0.9"/>
+  <!-- uzak dağlar -->
+  <path fill="#3b1a2b" d="M0 430h80v-40h80v-40h80v40h40v-80h80v40h80v40h80v-80h40v-40h80v40h40v80h80v-40h80v-40h80v40h40v40h80v-80h80v40h40v40h80v-40h80v-40h40v40h80v80h80v-40h40V600H0z"/>
+  <!-- orta dağlar -->
+  <path fill="#22121d" d="M0 480h120v-40h80v-40h80v40h120v-40h40v-40h80v40h40v40h120v-40h80v40h80v-80h80v40h40v40h80v-40h120v40h80v-40h80v-40h80v80h80v40h40V600H0z"/>
+  <!-- ön plan çimen bloklar -->
+  <path fill="#140c12" d="M0 540h160v-20h80v20h120v-40h80v40h200v-20h120v20h160v-40h80v40h200v-20h80v20h160v-40h120v40h40V600H0z"/>
+  <!-- ağaçlar -->
+  <g fill="#0f090d">
+    <rect x="300" y="456" width="16" height="48"/><rect x="276" y="416" width="64" height="48"/>
+    <rect x="1380" y="456" width="16" height="44"/><rect x="1356" y="420" width="64" height="44"/>
+    <rect x="860" y="476" width="16" height="44"/><rect x="836" y="440" width="64" height="40"/>
+  </g>
+</svg>

@@ -12,7 +12,7 @@ public final class SpeedModule extends TextHud {
     private boolean has;
 
     public SpeedModule() {
-        super("speed", "Hız", "Yatay hareket hızı (blok/sn).", Category.HUD, false, 0.80, 0.40);
+        super("speed", "Hız", "Yatay hareket hızı (blok/sn).", Category.HUD, false, 0.72, 0.19);
     }
 
     @Override

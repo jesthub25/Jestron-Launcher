@@ -16,7 +16,7 @@ public final class ClockModule extends TextHud {
     private static final DateTimeFormatter H12S = DateTimeFormatter.ofPattern("hh:mm:ss a");
 
     public ClockModule() {
-        super("clock", "Saat", "Bilgisayarının saati.", Category.HUD, false, 0.92, 0.01);
+        super("clock", "Saat", "Bilgisayarının saati.", Category.HUD, false, 0.47, 0.01);
     }
 
     @Override

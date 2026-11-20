@@ -1,0 +1,59 @@
+{
+  "name": "jestron-launcher",
+  "productName": "Jestron Launcher",
+  "version": "2.0.0",
+  "description": "Jestron Launcher - Minecraft launcher (Jestron Client + Efekt Menüsü)",
+  "main": "src/main/main.js",
+  "author": "Jestron",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --publish never",
+    "dist:dir": "electron-builder --win dir --publish never"
+  },
+  "build": {
+    "appId": "dev.jestron.launcher",
+    "productName": "Jestron Launcher",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png",
+      "artifactName": "Jestron-Launcher-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Jestron Launcher",
+      "uninstallDisplayName": "Jestron Launcher"
+    },
+    "extraResources": [
+      {
+        "from": "resources/mods",
+        "to": "mods",
+        "filter": [
+          "*.jar"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^5.0.5"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jesthub25/Jestron-Launcher.git"
+  },
+  "homepage": "https://github.com/jesthub25/Jestron-Launcher"
+}

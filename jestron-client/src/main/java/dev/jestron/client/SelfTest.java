@@ -73,7 +73,12 @@ public final class SelfTest {
             }
             case 2 -> {
                 shot(mc, "1-menu");
-                for (Module m : Modules.ALL) if (m.toggleable()) m.setEnabled(true);
+                // ilk açılıştaki gibi: Efekt Menüsü varsa onun da gösterdiği FPS / Ping / Koordinat kapalı kalır
+                for (Module m : Modules.ALL) {
+                    if (!m.toggleable()) continue;
+                    boolean dup = EfektMenu.isLoaded() && (m == Modules.FPS || m == Modules.PING || m == Modules.COORDS);
+                    m.setEnabled(!dup);
+                }
                 Modules.NAMETAG_HEALTH.settings().stream().filter(s -> s.key.equals("mobs"))
                         .forEach(s -> ((dev.jestron.client.core.Setting.Bool) s).set(true));
                 mc.setScreen(new HudEditorScreen(null));
@@ -109,12 +114,12 @@ public final class SelfTest {
                         "item replace entity @a armor.feet with minecraft:diamond_boots",
                         "item replace entity @a weapon.mainhand with minecraft:diamond_sword",
                         // açık havada düz bir platform: hedef hiçbir şeyin arkasında kalmasın
+                        // yaw 0 = güneye (+Z) bakış; köylü tam karşıda, göz hizasında
                         "execute as @a at @s run tp @s ~ 150 ~ 0 0",
                         "execute as @a at @s run fill ~-4 ~-1 ~-2 ~4 ~-1 ~8 minecraft:smooth_stone",
                         "execute as @a at @s run fill ~-4 ~ ~-2 ~4 ~4 ~8 minecraft:air",
                         "execute as @a at @s run summon minecraft:villager ~ ~ ~3 {NoAI:1b,Silent:1b,PersistenceRequired:1b,CustomNameVisible:1b,CustomName:'\"Hedef\"'}",
-                        "damage @e[type=minecraft:villager,limit=1,sort=nearest] 6",
-                        "execute as @a at @s run tp @s ~ ~ ~ facing entity @e[type=minecraft:villager,limit=1,sort=nearest] eyes"
+                        "damage @e[type=minecraft:villager,limit=1,sort=nearest] 6"
                 };
                 server.execute(() -> {
                     for (String c : cmds) {

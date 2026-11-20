@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: jshot:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'none'">
+  <title>Jestron Launcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="titlebar">
+    <div class="tb-drag"></div>
+    <div class="win-btns">
+      <button data-win="min" aria-label="Küçült"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
+      <button data-win="max" aria-label="Büyüt"><svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7"/></svg></button>
+      <button data-win="close" class="close" aria-label="Kapat"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+    </div>
+  </header>
+
+  <div id="app">
+    <aside id="sidebar">
+      <div class="logo">jestron<span class="dot">.</span></div>
+      <nav aria-label="Ana menü">
+        <a href="#" class="nav active" data-page="home">Ana sayfa</a>
+        <a href="#" class="nav" data-page="servers">Sunucular</a>
+        <a href="#" class="nav" data-page="mods">Modlar</a>
+        <a href="#" class="nav" data-page="gallery">Galeri</a>
+        <a href="#" class="nav" data-page="accounts">Hesaplar</a>
+        <a href="#" class="nav" data-page="console">Konsol</a>
+        <a href="#" class="nav" data-page="settings">Ayarlar</a>
+      </nav>
+      <div class="grow"></div>
+      <button id="side-acc" data-page="accounts" type="button">
+        <span class="avatar"><img alt=""><span class="initial">?</span></span>
+        <span class="acc-text"><b id="side-name">Hesap yok</b><small id="side-type">Giriş yap</small></span>
+      </button>
+    </aside>
+
+    <main id="content">
+      <div id="update-banner" class="banner hidden">
+        <span id="update-text">Yeni sürüm hazır.</span>
+        <button class="btn small" id="update-open" type="button">İndir</button>
+        <button class="link" id="update-hide" type="button">Sonra</button>
+      </div>
+
+      <!-- ANA SAYFA -->
+      <section class="page active" id="page-home">
+        <div class="home-top">
+          <div class="home-left">
+            <h1 id="greet">İyi oyunlar.</h1>
+            <p class="sub" id="home-sub">—</p>
+            <div class="row">
+              <button id="play-btn" class="pill primary big" type="button"><svg viewBox="0 0 24 24" class="fill"><path d="M7 4.5v15l13-7.5z"/></svg><span>Oyna</span></button>
+              <button class="pill outline big" data-page="settings" type="button">Sürümü değiştir</button>
+            </div>
+          </div>
+          <div class="home-art">
+            <div class="srv-float" id="home-server"></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div><small>Oyun süresi</small><b id="stat-time">—</b><span id="stat-time-sub">Launcher'dan oynanan</span></div>
+          <div><small>Modlar</small><b id="stat-mods">—</b><span id="stat-mods-sub">—</span></div>
+          <div><small>Bellek</small><b id="stat-ram">—</b><span>Java otomatik kurulur</span></div>
+        </div>
+      </section>
+
+      <!-- SUNUCULAR -->
+      <section class="page" id="page-servers">
+        <header class="page-head"><div><h2>Sunucular</h2><p>İstediğin kadar sunucu ekle; tek tıkla bağlan.</p></div>
+          <button class="btn ghost" id="srv-refresh" type="button">Yenile</button></header>
+        <form class="srv-add" id="srv-form" autocomplete="off">
+          <label><span>Ad</span><input id="srv-name" placeholder="Sunucum" maxlength="48"></label>
+          <label><span>Adres</span><input id="srv-host" placeholder="play.ornek.net veya 1.2.3.4:25565" maxlength="260"></label>
+          <button class="btn primary" type="submit">Ekle</button>
+        </form>
+        <div class="srv-list" id="srv-list"></div>
+        <label class="line-toggle"><span><b>Oyun içi listeye de ekle</b><small>Sunucular Minecraft'ın "Çok Oyunculu" ekranında da görünür. Oyunda eklediğin sunuculara dokunulmaz.</small></span>
+          <span class="switch"><input type="checkbox" id="srv-sync"><i></i></span></label>
+      </section>
+
+      <!-- MODLAR -->
+      <section class="page" id="page-mods">
+        <header class="page-head"><div><h2>Modlar</h2><p id="mods-sub">Fabric modları oyun başlarken otomatik kurulur.</p></div>
+          <button class="btn ghost" id="mods-folder" type="button">Mod klasörü</button></header>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="catalog" type="button">Katalog</button>
+          <button class="tab" data-tab="jestron" type="button">Jestron</button>
+          <button class="tab" data-tab="search" type="button">Modrinth'te ara</button>
+          <button class="tab" data-tab="packs" type="button">Paketlerim</button>
+          <button class="tab" data-tab="extra" type="button">Eklediklerim</button>
+        </div>
+        <div id="mods-vanilla-warn" class="notice hidden">Vanilla seçili; modlar sadece Fabric ile çalışır. <a href="#" data-page="settings">Ayarlar</a>'dan Fabric'e geç.</div>
+        <div class="tabpane active" id="tab-catalog">
+          <div class="chips" id="mod-cats"></div>
+          <div class="grid" id="mod-grid"></div>
+        </div>
+        <div class="tabpane" id="tab-jestron"><div class="grid two" id="jestron-cards"></div></div>
+        <div class="tabpane" id="tab-search">
+          <div class="search-row">
+            <div class="seg" id="search-type"><button data-v="mod" class="active" type="button">Mod</button><button data-v="resourcepack" type="button">Kaynak paketi</button><button data-v="shader" type="button">Shader</button></div>
+            <input id="mod-q" placeholder="Ara (ör. minimap, faithful, complementary)">
+            <button class="btn primary" id="mod-search" type="button">Ara</button>
+          </div>
+          <div class="grid" id="mod-results"></div>
+        </div>
+        <div class="tabpane" id="tab-packs">
+          <div class="pack-head"><h3>Kaynak paketleri</h3><button class="btn ghost small" data-open="resourcepacks" type="button">Klasörü aç</button></div>
+          <div class="list" id="packs-rp"></div>
+          <div class="pack-head"><h3>Shader paketleri</h3><button class="btn ghost small" data-open="shaderpacks" type="button">Klasörü aç</button></div>
+          <div class="list" id="packs-sh"></div>
+          <p class="muted small">Shader'lar için Katalog'dan Iris Shaders'ı aç. Paketleri oyunda Seçenekler › Kaynak Paketleri / Shader Paketleri'nden seçersin.</p>
+        </div>
+        <div class="tabpane" id="tab-extra"><div class="grid" id="mod-extra"></div></div>
+      </section>
+
+      <!-- GALERİ -->
+      <section class="page" id="page-gallery">
+        <header class="page-head"><div><h2>Galeri</h2><p>Oyunda F2 ile aldığın ekran görüntüleri.</p></div>
+          <div class="row"><button class="btn ghost" id="shots-refresh" type="button">Yenile</button><button class="btn ghost" data-open="screenshots" type="button">Klasörü aç</button></div></header>
+        <div class="shots" id="shots"></div>
+      </section>
+
+      <!-- HESAPLAR -->
+      <section class="page" id="page-accounts">
+        <header class="page-head"><div><h2>Hesaplar</h2><p>Premium (Microsoft) ve offline hesaplar.</p></div></header>
+        <div class="grid two">
+          <div class="card">
+            <h3>Premium hesap</h3>
+            <p class="muted">Microsoft hesabınla giriş yap: skin, pelerin ve premium sunucular.</p>
+            <button class="btn ms wide" id="acc-ms" type="button"><svg viewBox="0 0 24 24" class="fill"><path fill="#f25022" d="M2 2h9.5v9.5H2z"/><path fill="#7fba00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00a4ef" d="M2 12.5h9.5V22H2z"/><path fill="#ffb900" d="M12.5 12.5H22V22h-9.5z"/></svg>Microsoft ile giriş yap</button>
+          </div>
+          <div class="card" id="offline-card">
+            <h3>Offline hesap <span class="pill-tag" id="offline-pill">Kilitli</span></h3>
+            <p class="muted" id="offline-desc">Offline hesap için önce Minecraft sahibi bir Microsoft hesabı ekle.</p>
+            <div class="search-row"><input id="acc-off-name" placeholder="Kullanıcı adı" maxlength="16"><button class="btn" id="acc-off" type="button">Ekle</button></div>
+          </div>
+        </div>
+        <h3 class="section">Kayıtlı hesaplar</h3>
+        <div class="grid" id="acc-list"></div>
+      </section>
+
+      <!-- KONSOL -->
+      <section class="page" id="page-console">
+        <header class="page-head"><div><h2>Konsol</h2><p>Oyun ve launcher çıktısı.</p></div>
+          <div class="row"><button class="btn ghost" id="log-copy" type="button">Kopyala</button><button class="btn ghost" id="log-clear" type="button">Temizle</button><button class="btn danger" id="log-kill" type="button">Oyunu kapat</button></div></header>
+        <div id="crash-card" class="crash hidden"><b id="crash-title"></b><p id="crash-hint"></p><code id="crash-line"></code></div>
+        <pre id="log"></pre>
+      </section>
+
+      <!-- AYARLAR -->
+      <section class="page" id="page-settings">
+        <header class="page-head"><div><h2>Ayarlar</h2><p>Değişiklikler kendiliğinden kaydedilir.</p></div></header>
+        <div class="settings">
+          <div class="group">
+            <h3>Görünüm</h3>
+            <div class="srow"><div><b>Koyu mod</b><span>Launcher'ı koyu renklerde göster</span></div><span class="switch"><input type="checkbox" id="set-dark"><i></i></span></div>
+            <div class="srow"><div><b>Vurgu rengi</b><span>Düğmeler ve seçili öğeler</span></div><div class="swatches" id="set-accent"></div></div>
+          </div>
+          <div class="group">
+            <h3>Oyun</h3>
+            <div class="srow"><div><b>Sürüm</b><span>Jestron Client ve Efekt Menüsü 1.21.4 içindir</span></div><select id="set-version"></select></div>
+            <div class="srow"><div><b>Snapshot sürümleri</b><span>Deneme sürümlerini listede göster</span></div><span class="switch"><input type="checkbox" id="set-snap"><i></i></span></div>
+            <div class="srow"><div><b>Mod yükleyici</b><span>Fabric: modlu · Vanilla: saf oyun</span></div><div class="seg" id="set-loader"><button data-v="fabric" type="button">Fabric</button><button data-v="vanilla" type="button">Vanilla</button></div></div>
+          </div>
+          <div class="group">
+            <h3>Performans</h3>
+            <div class="srow"><div><b>Ön ayar</b><span>RAM, Java ayarları ve modları birlikte ayarlar</span></div><div class="seg" id="set-preset"><button data-v="low" type="button">Düşük PC</button><button data-v="balanced" type="button">Dengeli</button><button data-v="high" type="button">Yüksek</button></div></div>
+            <div class="srow col"><div class="ram-head"><div><b>Bellek (RAM)</b><span id="ram-hint">—</span></div><b class="big-num" id="ram-val">—</b></div><input type="range" id="set-ram" min="1024" step="512"></div>
+            <div class="srow col"><div><b>JVM argümanları</b><span>Bilmiyorsan dokunma</span></div><input id="set-jvm" class="mono"></div>
+          </div>
+          <div class="group">
+            <h3>Görüntü</h3>
+            <div class="srow"><div><b>Çözünürlük</b><span>Oyun penceresi</span></div><div class="row"><input id="set-w" type="number" class="num" min="640"><span class="muted">×</span><input id="set-h" type="number" class="num" min="480"></div></div>
+            <div class="srow"><div><b>Tam ekran</b><span>Oyunu tam ekran başlat</span></div><span class="switch"><input type="checkbox" id="set-fs"><i></i></span></div>
+          </div>
+          <div class="group">
+            <h3>Launcher</h3>
+            <div class="srow"><div><b>Oyun açılınca</b><span>Launcher penceresine ne olsun</span></div>
+              <select id="set-onlaunch"><option value="hide">Gizle, oyun kapanınca geri getir</option><option value="close">Gizle, oyun kapanınca kapat</option><option value="keep">Açık kalsın</option></select></div>
+            <div class="srow"><div><b>Güncellemeleri kontrol et</b><span>Yeni launcher sürümü çıkınca haber ver</span></div><span class="switch"><input type="checkbox" id="set-upd"><i></i></span></div>
+            <div class="srow col"><div><b>Java yolu</b><span>Boş bırak: doğru Java otomatik indirilir</span></div><div class="search-row"><input id="set-java" class="mono" placeholder="Otomatik"><button class="btn ghost" id="set-java-pick" type="button">Seç</button></div></div>
+            <div class="srow col"><div><b>Oyun klasörü</b><span>Sürümler, Java ve oyun profilleri burada</span></div><div class="search-row"><input id="set-dir" class="mono"><button class="btn ghost" id="set-dir-pick" type="button">Seç</button><button class="btn ghost" id="set-dir-open" type="button">Aç</button></div></div>
+          </div>
+          <div class="group">
+            <h3>Bakım</h3>
+            <div class="srow"><div><b>Onar</b><span>Seçili sürümün dosyalarını ve mod önbelleğini sıfırlar; bir sonraki oyunda yeniden indirilir</span></div><button class="btn" id="set-repair" type="button">Onar</button></div>
+            <div class="srow"><div><b>Güncelleme</b><span id="upd-status">—</span></div><button class="btn ghost" id="set-upd-check" type="button">Şimdi kontrol et</button></div>
+          </div>
+          <p class="about" id="about"></p>
+        </div>
+      </section>
+
+      <div id="progress" class="hidden">
+        <div class="prog-text"><span id="prog-stage">Hazırlanıyor</span><b id="prog-pct">0%</b></div>
+        <div class="prog-bar"><i id="prog-fill"></i></div>
+      </div>
+    </main>
+  </div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

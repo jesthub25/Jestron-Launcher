@@ -52,6 +52,17 @@ jobs:
           url=$(gh api repos/jesthub25/JestronPriv/releases --jq '[.[] | select(.tag_name|startswith("mod-1.21.4-v"))][0].assets[] | select(.name|test("-mc1\\.21\\.4\\.jar$")) | .browser_download_url' | head -1)
           if [ -n "$url" ]; then curl -sSL -o run/mods/efekt-menusu.jar "$url" && ls -la run/mods; else echo "Efekt Menüsü bulunamadı, onsuz test edilecek"; fi
 
+      - name: Launcher'ın varsayılan mod paketini indir (Modrinth)
+        run: |
+          mkdir -p run/mods
+          for slug in sodium lithium ferrite-core entityculling immediatelyfast dynamic-fps appleskin modmenu; do
+            url=$(curl -sSf "https://api.modrinth.com/v2/project/$slug/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%221.21.4%22%5D" \
+              -H "User-Agent: jesthub25/Jestron-Launcher CI" \
+              | jq -r '([.[] | select(.version_type=="release")] + .)[0].files | (map(select(.primary)) + .)[0].url')
+            if [ -n "$url" ] && [ "$url" != "null" ]; then curl -sSfL -o "run/mods/$slug.jar" "$url" && echo "OK $slug"; else echo "YOK $slug"; fi
+          done
+          ls -la run/mods
+
       - name: Gerçek oyun içinde test
         env:
           JESTRON_SELFTEST: '1'
@@ -96,3 +107,78 @@ jobs:
         with:
           name: jestron-client
           path: jestron-client/build/libs/*.jar
+
+  launcher:
+    name: Jestron Launcher (Windows kurulum dosyası)
+    needs: mod
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+
+      - name: Jestron Client jar'ını launcher'a koy
+        uses: actions/download-artifact@v4
+        with:
+          name: jestron-client
+          path: launcher/resources/mods
+
+      - name: Kaynak jar'ı çıkar
+        shell: pwsh
+        run: |
+          Get-ChildItem resources/mods -Filter *-sources.jar | Remove-Item -Force
+          Get-ChildItem resources/mods
+
+      - name: Bağımlılıklar
+        run: npm ci
+
+      - name: Kod kontrolü
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse src -Filter *.js | ForEach-Object { node --check $_.FullName; if ($LASTEXITCODE -ne 0) { exit 1 } }
+
+      - name: Kurulum dosyası (NSIS)
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Kurulum dosyası
+        uses: actions/upload-artifact@v4
+        with:
+          name: jestron-launcher-windows
+          path: |
+            launcher/dist/*.exe
+            launcher/dist/latest.yml
+
+  release:
+    name: GitHub Release
+    needs: [mod, launcher]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+
+      - name: Release oluştur / güncelle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          files=$(ls out/jestron-launcher-windows/*.exe out/jestron-client/*.jar | grep -v -- '-sources')
+          notes=RELEASE_NOTES.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" $files --clobber
+            gh release edit "$tag" --notes-file "$notes"
+          else
+            gh release create "$tag" $files --title "Jestron Launcher ${tag#v}" --notes-file "$notes" --latest
+          fi
+

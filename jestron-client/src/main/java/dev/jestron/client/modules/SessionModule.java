@@ -10,7 +10,7 @@ public final class SessionModule extends TextHud {
     public static long joinedAt;
 
     public SessionModule() {
-        super("session", "Oturum süresi", "Bu dünyada / sunucuda geçen süre.", Category.HUD, false, 0.80, 0.535);
+        super("session", "Oturum süresi", "Bu dünyada / sunucuda geçen süre.", Category.HUD, false, 0.72, 0.325);
     }
 
     @Override
