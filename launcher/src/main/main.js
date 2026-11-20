@@ -18,6 +18,7 @@ const logBuffer = [];
 let pendingLogs = [];
 let flushTimer = null;
 let lastCrash = null;
+let sessionLog = []; // sadece son oyunun satırları (çökme analizi için)
 
 // İkinci kopya açılırsa hemen çık, mevcut pencereyi öne getir
 if (!app.requestSingleInstanceLock()) { app.exit(0); return; }
@@ -54,6 +55,8 @@ function log(line) {
   const s = String(line);
   logBuffer.push(s);
   if (logBuffer.length > 4000) logBuffer.splice(0, logBuffer.length - 4000);
+  sessionLog.push(s);
+  if (sessionLog.length > 3000) sessionLog.splice(0, sessionLog.length - 3000);
   pendingLogs.push(s);
   if (pendingLogs.length > 2000) pendingLogs.splice(0, pendingLogs.length - 2000);
   if (!flushTimer) {
@@ -234,6 +237,7 @@ handle('game:kill', () => game.kill());
 handle('game:crash', () => lastCrash);
 handle('game:launch', async opts => {
   lastCrash = null;
+  sessionLog = [];
   await game.launch(opts || {}, {
     progress: (stage, pct) => send('game:progress', { stage, pct }),
     log,
@@ -248,7 +252,7 @@ handle('game:launch', async opts => {
       if (mode === 'close' && (code === 0 || killed)) return app.quit();
       showWin();
       if (code !== 0 && !killed) {
-        lastCrash = crash.analyze(logBuffer, code) || { title: 'Oyun kapandı', hint: '', line: '' };
+        lastCrash = crash.analyze(sessionLog, code) || { title: 'Oyun kapandı', hint: '', line: '' };
         lastCrash.code = code;
         send('game:crash', lastCrash);
       }

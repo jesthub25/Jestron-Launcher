@@ -17,6 +17,7 @@ function writeJson(name, data) {
   fs.renameSync(tmp, file(name));
 }
 
+const SCHEMA = 2;
 const totalMb = () => Math.floor(os.totalmem() / 1048576);
 
 function defaultRam() {
@@ -52,6 +53,7 @@ function defaults() {
     dark: false,
     accent: 0,
     checkUpdates: true,
+    schema: SCHEMA,
     playtimeMs: 0,
     lastPlayedAt: 0
   };
@@ -64,6 +66,12 @@ function migrate(s) {
   if (Array.isArray(s.servers)) s.servers = s.servers.filter(x => x && !x.featured);
   delete s.theme;
   delete s.layout;
+  if (Object.keys(s).length && (!s.schema || s.schema < SCHEMA)) {
+    // 2.0: Jestron Client ve Efekt Menüsü 1.21.4'te; zoom Efekt Menüsü'nde (C) olduğu için Zoomify kapanır
+    if (s.version === '1.20.1') s.version = DEFAULT_VERSION;
+    if (s.mods && typeof s.mods === 'object') s.mods.zoomify = false;
+  }
+  s.schema = SCHEMA;
   return s;
 }
 

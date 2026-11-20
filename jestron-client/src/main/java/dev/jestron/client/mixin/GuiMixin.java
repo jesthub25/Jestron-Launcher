@@ -18,6 +18,7 @@ public abstract class GuiMixin {
         try {
             Minecraft mc = Minecraft.getInstance();
             if (mc.options.hideGui || mc.player == null) return;
+            if (mc.getDebugOverlay().showDebugScreen()) return; // F3 açıkken üst üste binmesin
             if (mc.screen instanceof dev.jestron.client.gui.HudEditorScreen) return;
             g.pose().pushPose();
             g.pose().translate(0f, 0f, 850f);
