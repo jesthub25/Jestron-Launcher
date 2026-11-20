@@ -26,6 +26,8 @@ public final class Config {
     private static final int VERSION = 1;
     /** Oyun içi test sırasında oyuncunun ayarları ezilmesin. */
     public static boolean readOnly;
+    /** Bu açılışta mevcut bir ayar dosyası yüklendi mi (ilk açılış ayarları için). */
+    public static boolean loadedExisting;
     private static String lastWritten = "";
 
     private static Path file() {
@@ -41,6 +43,7 @@ public final class Config {
             if (root != null) JestronClient.LOG.warn("Ayar dosyası okunamadı, yedekten (.bak) yüklendi");
         }
         if (root == null) return;
+        loadedExisting = true;
         JsonElement mods = root.get("modules");
         if (mods == null || !mods.isJsonObject()) return;
         JsonObject mo = mods.getAsJsonObject();

@@ -259,8 +259,7 @@ public final class JestronMenuScreen extends Screen {
         search.setX(cx + 10);
         search.setY(py + 16);
         search.setWidth(Math.max(30, cw - 96 - 16));
-        search.setTextColor(Theme.text());
-        search.render(g, mx, my, pt);
+        drawField(g, search, cx + 12, py + 16, Math.max(30, cw - 96 - 24), "Mod ara…");
         List<Module> list = visibleModules();
         long on = list.stream().filter(m -> m.toggleable() && m.isEnabled()).count();
         String count = on + " / " + list.stream().filter(Module::toggleable).count() + " açık";
@@ -327,6 +326,31 @@ public final class JestronMenuScreen extends Screen {
             g.drawString(font, a, ax, ay, ah2 ? Theme.accent() : Theme.muted(), false);
         }
         cardHits.add(new CardHit(m, x, y, w, CARD_H, sx, sy, sw, sh, ax - 2, ay - 2, aw + 4, ah + 2));
+    }
+
+    /**
+     * Yazı kutusunu kendimiz çizeriz: EditBox yazıyı gölgeli çizer, açık temada bulanık görünür.
+     * EditBox sadece klavye girişi için kullanılır.
+     */
+    private void drawField(GuiGraphics g, EditBox b, int x, int y, int w, String hint) {
+        String v = b.getValue();
+        int cursor = Math.max(0, Math.min(v.length(), b.getCursorPosition()));
+        if (v.isEmpty() && !b.isFocused()) {
+            if (!hint.isEmpty()) g.drawString(font, hint, x, y, Theme.muted(), false);
+            return;
+        }
+        int start = 0;
+        if (font.width(v) > w) {
+            start = cursor;
+            while (start > 0 && font.width(v.substring(start - 1, cursor)) < w - 6) start--;
+        }
+        String vis = font.plainSubstrByWidth(v.substring(start), w);
+        g.drawString(font, vis, x, y, Theme.text(), false);
+        if (b.isFocused() && (System.currentTimeMillis() / 530) % 2 == 0) {
+            int end = Math.min(cursor, start + vis.length());
+            int cx = x + font.width(v.substring(start, Math.max(start, end)));
+            g.fill(cx, y - 1, cx + 1, y + 9, Theme.accent());
+        }
     }
 
     private void drawScrollbar(GuiGraphics g, double sc, double max, int total) {
@@ -415,9 +439,8 @@ public final class JestronMenuScreen extends Screen {
                 b.setX(bx + 8);
                 b.setY(byy + 4);
                 b.setWidth(bw - 16);
-                b.setTextColor(Theme.text());
                 b.visible = byy >= cy && byy + 16 <= cy + ch;
-                if (b.visible) b.render(g, mx, my, pt);
+                if (b.visible) drawField(g, b, bx + 10, byy + 4, bw - 20, "");
             }
             rowHits.add(new RowHit(s, cx, y, cw, h, bx, bw));
             return;
@@ -480,15 +503,15 @@ public final class JestronMenuScreen extends Screen {
         double y = my - Math.round((1f - openProgress()) * 10f);
         // önce yazı kutuları
         for (EditBox b : textBoxes.values()) {
-            if (b.visible && b.mouseClicked(mx, y, button)) {
+            if (b.visible && Draw.inside(mx, y, b.getX() - 8, b.getY() - 4, b.getWidth() + 16, 16)) {
                 setFocused(b);
+                b.moveCursorToEnd(false);
                 return true;
             }
         }
         if (search.isVisible() && Draw.inside(mx, y, cx, py + 10, cw - 96, 20)) {
-            search.mouseClicked(Math.max(search.getX(), Math.min(mx, search.getX() + search.getWidth() - 1)), search.getY() + 2, button);
             setFocused(search);
-            search.setFocused(true);
+            search.moveCursorToEnd(false);
             return true;
         }
         setFocused(null);

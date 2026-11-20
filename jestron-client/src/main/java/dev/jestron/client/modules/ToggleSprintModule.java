@@ -20,7 +20,7 @@ public final class ToggleSprintModule extends TextHud {
     private final Setting.Bool prevSneak = add(new Setting.Bool("prevSneak", "", false));
 
     public ToggleSprintModule() {
-        super("togglesprint", "Aç/Kapa koşma", "Koşmak ve eğilmek için tuşu basılı tutma.", Category.GAMEPLAY, false, 0.005, 0.95);
+        super("togglesprint", "Aç/Kapa koşma", "Koşmak ve eğilmek için tuşu basılı tutma.", Category.GAMEPLAY, false, 0.005, 0.46);
         captured.visible = false;
         prevSprint.visible = false;
         prevSneak.visible = false;

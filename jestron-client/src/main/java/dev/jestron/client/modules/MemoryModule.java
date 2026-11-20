@@ -5,7 +5,7 @@ import dev.jestron.client.core.TextHud;
 
 public final class MemoryModule extends TextHud {
     public MemoryModule() {
-        super("memory", "Bellek", "Oyunun kullandığı RAM.", Category.HUD, false, 0.005, 0.28);
+        super("memory", "Bellek", "Oyunun kullandığı RAM.", Category.HUD, false, 0.80, 0.445);
     }
 
     @Override

@@ -22,7 +22,7 @@ public final class KeystrokesModule extends HudModule {
     private long lastNanos;
 
     public KeystrokesModule() {
-        super("keystrokes", "Tuşlar", "WASD, fare ve boşluk tuşlarını gösterir.", Category.HUD, false, 0.005, 0.42);
+        super("keystrokes", "Tuşlar", "WASD, fare ve boşluk tuşlarını gösterir.", Category.HUD, false, 0.005, 0.245);
     }
 
     @Override

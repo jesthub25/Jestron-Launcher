@@ -31,6 +31,13 @@ public final class JestronClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         Config.load();
+        if (!Config.loadedExisting && dev.jestron.client.integration.EfektMenu.isLoaded()) {
+            // Efekt Menüsü'nün bilgi satırı FPS, ping ve koordinatı zaten gösteriyor: üst üste binmesin
+            Modules.FPS.setEnabled(false);
+            Modules.PING.setEnabled(false);
+            Modules.COORDS.setEnabled(false);
+            LOG.info("Efekt Menüsü bulundu: aynı bilgiyi gösteren FPS / Ping / Koordinat HUD'ları ilk açılışta kapalı");
+        }
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.jestron.menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "category.jestron"));

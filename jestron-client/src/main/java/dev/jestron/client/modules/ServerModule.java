@@ -7,7 +7,7 @@ import net.minecraft.client.multiplayer.ServerData;
 
 public final class ServerModule extends TextHud {
     public ServerModule() {
-        super("server", "Sunucu", "Bağlı olduğun sunucunun adresi.", Category.HUD, false, 0.005, 0.325);
+        super("server", "Sunucu", "Bağlı olduğun sunucunun adresi.", Category.HUD, false, 0.80, 0.49);
     }
 
     @Override

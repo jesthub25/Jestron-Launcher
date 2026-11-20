@@ -30,7 +30,7 @@ public final class ArmorModule extends HudModule {
     private final List<Integer> colors = new ArrayList<>();
 
     public ArmorModule() {
-        super("armor", "Zırh durumu", "Zırh ve eşya dayanıklılığı.", Category.HUD, true, 0.005, 0.62);
+        super("armor", "Zırh durumu", "Zırh ve eşya dayanıklılığı.", Category.HUD, true, 0.72, 0.74);
     }
 
     private void collect(boolean preview) {

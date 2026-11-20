@@ -36,6 +36,7 @@ public final class SelfTest {
         Config.readOnly = true;
         Minecraft mc = Minecraft.getInstance();
         mc.options.onboardAccessibility = false;
+        mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
         JestronClient.LOG.info("[SELFTEST] başladı");
     }
 
@@ -107,7 +108,11 @@ public final class SelfTest {
                         "item replace entity @a armor.legs with minecraft:diamond_leggings",
                         "item replace entity @a armor.feet with minecraft:diamond_boots",
                         "item replace entity @a weapon.mainhand with minecraft:diamond_sword",
-                        "execute as @a at @s run summon minecraft:villager ^ ^ ^3 {NoAI:1b,Silent:1b,PersistenceRequired:1b,CustomNameVisible:1b,CustomName:'\"Hedef\"'}",
+                        // açık havada düz bir platform: hedef hiçbir şeyin arkasında kalmasın
+                        "execute as @a at @s run tp @s ~ 150 ~ 0 0",
+                        "execute as @a at @s run fill ~-4 ~-1 ~-2 ~4 ~-1 ~8 minecraft:smooth_stone",
+                        "execute as @a at @s run fill ~-4 ~ ~-2 ~4 ~4 ~8 minecraft:air",
+                        "execute as @a at @s run summon minecraft:villager ~ ~ ~3 {NoAI:1b,Silent:1b,PersistenceRequired:1b,CustomNameVisible:1b,CustomName:'\"Hedef\"'}",
                         "damage @e[type=minecraft:villager,limit=1,sort=nearest] 6",
                         "execute as @a at @s run tp @s ~ ~ ~ facing entity @e[type=minecraft:villager,limit=1,sort=nearest] eyes"
                 };
@@ -124,6 +129,8 @@ public final class SelfTest {
                 step = 6;
             }
             case 6 -> {
+                boolean target = mc.crosshairPickEntity instanceof net.minecraft.world.entity.LivingEntity;
+                JestronClient.LOG.info("[SELFTEST] nişangahta canlı var: {}", target);
                 shot(mc, "3-oyun-ici-hud");
                 mc.gui.getChat().addMessage(Component.literal("Jestron Client test mesajı (sohbet saati)"));
                 boolean fired = Modules.AUTO_GG.check("Tebrikler, oyunu KAZANDIN!");

@@ -9,7 +9,7 @@ public final class CpsModule extends TextHud {
     private final Setting.Bool right = add(new Setting.Bool("right", "Sağ tıkı da göster", true));
 
     public CpsModule() {
-        super("cps", "CPS", "Saniyedeki tık sayısı (sol | sağ).", Category.HUD, true, 0.005, 0.055);
+        super("cps", "CPS", "Saniyedeki tık sayısı (sol | sağ).", Category.HUD, true, 0.005, 0.195);
     }
 
     @Override
