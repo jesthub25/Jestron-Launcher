@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release etiketi (ör. v2.0.0). Boşsa sadece derlenir.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -159,7 +164,7 @@ jobs:
   release:
     name: GitHub Release
     needs: [mod, launcher]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -172,13 +177,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ inputs.release_tag || github.ref_name }}"
           files=$(ls out/jestron-launcher-windows/*.exe out/jestron-client/*.jar | grep -v -- '-sources')
           notes=RELEASE_NOTES.md
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" $files --clobber
             gh release edit "$tag" --notes-file "$notes"
           else
-            gh release create "$tag" $files --title "Jestron Launcher ${tag#v}" --notes-file "$notes" --latest
+            gh release create "$tag" $files --target "$GITHUB_SHA" --title "Jestron Launcher ${tag#v}" --notes-file "$notes" --latest
           fi
 
