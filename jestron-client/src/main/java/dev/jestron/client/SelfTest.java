@@ -5,6 +5,7 @@ import dev.jestron.client.core.Module;
 import dev.jestron.client.core.Modules;
 import dev.jestron.client.gui.HudEditorScreen;
 import dev.jestron.client.gui.JestronMenuScreen;
+import dev.jestron.client.gui.MenuStyle;
 import dev.jestron.client.integration.EfektMenu;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -28,7 +29,7 @@ public final class SelfTest {
     }
 
     private static boolean active;
-    private static int step, wait, total;
+    private static int step, wait, total, styleShot;
 
     public static void maybeStart() {
         if (!Boolean.getBoolean("jestron.selftest")) return;
@@ -157,15 +158,27 @@ public final class SelfTest {
             }
             case 9 -> {
                 shot(mc, "6-ayarlar");
-                Modules.APPEARANCE.menu.set(1);
-                Modules.APPEARANCE.accent.set(2);
-                mc.setScreen(new JestronMenuScreen(null));
+                styleShot = 0;
+                step = 20;
+            }
+            case 20 -> {
+                // 10 menü tasarımı sırayla
+                Modules.APPEARANCE.style.set(styleShot);
+                Modules.APPEARANCE.accent.set(0);
+                JestronMenuScreen ms = new JestronMenuScreen(null);
+                mc.setScreen(ms);
+                if (MenuStyle.ALL[styleShot].split()) ms.openSettings(Modules.AUTO_GG);
                 wait = 20;
-                step = 10;
+                step = 21;
+            }
+            case 21 -> {
+                shot(mc, String.format(java.util.Locale.ROOT, "stil-%02d", styleShot + 1));
+                styleShot++;
+                step = styleShot < MenuStyle.ALL.length ? 20 : 10;
+                wait = 2;
             }
             case 10 -> {
-                shot(mc, "7-koyu-tema");
-                Modules.APPEARANCE.menu.set(0);
+                Modules.APPEARANCE.style.set(0);
                 Modules.APPEARANCE.accent.set(0);
                 mc.setScreen(new HudEditorScreen(null));
                 wait = 30;
