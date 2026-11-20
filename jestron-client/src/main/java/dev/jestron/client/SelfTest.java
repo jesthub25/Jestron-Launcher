@@ -191,11 +191,73 @@ public final class SelfTest {
                     wait = 40;
                     step = 12;
                 } else {
-                    step = 13;
+                    styleShot = 0;
+                    step = 30;
                 }
             }
             case 12 -> {
                 shot(mc, "9-efekt-menusu");
+                styleShot = 0;
+                step = 30;
+            }
+            case 30 -> {
+                // 12 ESC menüsü tasarımı: vanilla duraklatma menüsü açılır, mixin Jestron menüsüne çevirmeli
+                Modules.APPEARANCE.pause.set(styleShot + 1);
+                mc.setScreen(new net.minecraft.client.gui.screens.PauseScreen(true));
+                wait = 20;
+                step = 31;
+            }
+            case 31 -> {
+                if (!(mc.screen instanceof dev.jestron.client.gui.JestronPauseScreen ps)) {
+                    finish(mc, "FAIL: ESC menüsü değiştirilmedi: " + mc.screen);
+                    return;
+                }
+                java.util.Set<String> ids = new java.util.HashSet<>();
+                for (var it : ps.items()) ids.add(it.id());
+                if (!ids.containsAll(java.util.List.of("resume", "jestron", "hud", "options", "advancements", "stats", "disconnect"))) {
+                    finish(mc, "FAIL: ESC menüsü öğeleri eksik: " + ids);
+                    return;
+                }
+                if (styleShot == 0) JestronClient.LOG.info("[SELFTEST] ESC menüsü öğeleri: {}", ids);
+                shot(mc, String.format(java.util.Locale.ROOT, "esc-%02d", styleShot + 1));
+                styleShot++;
+                step = styleShot < dev.jestron.client.gui.PauseStyle.ALL.length ? 30 : 32;
+                wait = 2;
+            }
+            case 32 -> {
+                // menüden Ayarlar açılıp geri dönülünce yine Jestron ESC menüsü gelmeli
+                Modules.APPEARANCE.pause.reset();
+                mc.setScreen(new net.minecraft.client.gui.screens.PauseScreen(true));
+                if (mc.screen instanceof dev.jestron.client.gui.JestronPauseScreen ps) {
+                    for (var it : ps.items()) if (it.id().equals("options")) it.action().run();
+                }
+                wait = 10;
+                step = 33;
+            }
+            case 33 -> {
+                if (!(mc.screen instanceof net.minecraft.client.gui.screens.options.OptionsScreen)) {
+                    finish(mc, "FAIL: Ayarlar açılmadı: " + mc.screen);
+                    return;
+                }
+                mc.screen.onClose();
+                wait = 10;
+                step = 34;
+            }
+            case 34 -> {
+                if (!(mc.screen instanceof dev.jestron.client.gui.JestronPauseScreen)) {
+                    finish(mc, "FAIL: Ayarlardan dönünce ESC menüsü gelmedi: " + mc.screen);
+                    return;
+                }
+                // F3+Esc (menüsüz duraklatma) vanilla kalmalı
+                mc.setScreen(new net.minecraft.client.gui.screens.PauseScreen(false));
+                wait = 5;
+                step = 35;
+            }
+            case 35 -> {
+                if (!(mc.screen instanceof net.minecraft.client.gui.screens.PauseScreen)) {
+                    finish(mc, "FAIL: menüsüz duraklatma değiştirildi: " + mc.screen);
+                    return;
+                }
                 step = 13;
             }
             case 13 -> {

@@ -8,7 +8,9 @@
     "GuiMixin",
     "LivingEntityRendererMixin",
     "MouseHandlerMixin",
-    "OptionInstanceAccessor"
+    "OptionInstanceAccessor",
+    "MinecraftMixin",
+    "PauseScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
