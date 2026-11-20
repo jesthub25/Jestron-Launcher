@@ -7,7 +7,7 @@ import dev.jestron.client.core.Theme;
 
 /** Menü teması ve HUD yazı stili. Açılıp kapanmaz, sadece ayardır. */
 public final class AppearanceModule extends Module {
-    public final Setting.Choice style = add(new Setting.Choice("style", "Menü tasarımı", 0, dev.jestron.client.gui.MenuStyle.names()));
+    public final Setting.Choice style = add(new Setting.Choice("style", "Menü tasarımı", 8, dev.jestron.client.gui.MenuStyle.names()));
     public final Setting.Choice accent = add(new Setting.Choice("accent", "Vurgu rengi", 0, Theme.ACCENT_NAMES));
     public final Setting.Bool hudBg = add(new Setting.Bool("hudBg", "HUD arka planı", true));
     public final Setting.Bool hudShadow = add(new Setting.Bool("hudShadow", "HUD yazı gölgesi", true));

@@ -178,7 +178,7 @@ public final class SelfTest {
                 wait = 2;
             }
             case 10 -> {
-                Modules.APPEARANCE.style.set(0);
+                Modules.APPEARANCE.style.reset();
                 Modules.APPEARANCE.accent.set(0);
                 mc.setScreen(new HudEditorScreen(null));
                 wait = 30;
