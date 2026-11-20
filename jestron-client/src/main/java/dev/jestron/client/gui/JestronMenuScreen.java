@@ -451,6 +451,8 @@ public final class JestronMenuScreen extends Screen {
     private void drawHeader(GuiGraphics g, int mx, int my) {
         int hy = py + PAD;
         int x1 = cx, x2;
+        // Ayarlar tam sayfa açıkken başlık satırını "‹ Geri", modül adı ve Sıfırla kullanır: logo/kısayollar çizilmez
+        if (settingsOf != null && !split()) return;
         if (st.nav() != MenuStyle.Nav.LEFT) {
             // logo + sağda kısayollar
             logo(g, px + PAD, hy + 5);
