@@ -7,7 +7,8 @@ module.exports = {
   LAUNCHER_REPO: 'jesthub25/Jestron-Launcher',
   EFEKT_REPO: 'jesthub25/JestronPriv',
   EFEKT_TAG_PREFIX: 'mod-1.21.4-v',
-  EFEKT_ASSET: /^JestronPriv-Mod-.+-mc1\.21\.4\.jar$/,
+  // 1.22.0 ile jar adi EfektMod oldu; eski adlar da kabul edilir
+  EFEKT_ASSET: /^(EfektMod|JestronPriv-Mod)-.+-mc1\.21\.4\.jar$/,
 
   // Jestron Client ve Efekt Menüsü bu sürüm için yazıldı
   JESTRON_MC: '1.21.4',
