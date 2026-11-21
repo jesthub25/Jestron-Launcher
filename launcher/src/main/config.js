@@ -1,7 +1,7 @@
 // Jestron Launcher - genel ayarlar. Hiçbir sunucu gömülü değil: sunucuları kullanıcı launcher'dan ekler.
 module.exports = {
   APP_NAME: 'Jestron Launcher',
-  USER_AGENT: 'Jestron/jestron-launcher/2.2.2 (github.com/jesthub25/Jestron-Launcher)',
+  USER_AGENT: 'Jestron/jestron-launcher/2.2.3 (github.com/jesthub25/Jestron-Launcher)',
 
   // Güncelleme kontrolü ve Efekt Menüsü indirmesi için GitHub depoları
   LAUNCHER_REPO: 'jesthub25/Jestron-Launcher',
